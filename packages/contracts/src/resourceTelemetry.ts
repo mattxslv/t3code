@@ -1,10 +1,33 @@
 import * as Schema from "effect/Schema";
 
-import { NonNegativeInt, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { NonNegativeInt, PositiveInt, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { HostPowerSnapshot } from "./background.ts";
 import { DesktopUpdateChannelSchema, DesktopUpdateStateSchema } from "./ipc.ts";
 
 export const RESOURCE_MONITOR_PROTOCOL_VERSION = 3 as const;
+
+export const HostMemoryPressureLevel = Schema.Literals(["none", "elevated", "severe"]);
+export type HostMemoryPressureLevel = typeof HostMemoryPressureLevel.Type;
+
+export const HostMemoryPressureAgent = Schema.Struct({
+  /** Null for a process several threads share, such as a Codex app-server. */
+  threadId: Schema.NullOr(ThreadId),
+  /** What launched it, such as `claude` or `codex`. */
+  agent: TrimmedNonEmptyString,
+  memoryBytes: NonNegativeInt,
+});
+export type HostMemoryPressureAgent = typeof HostMemoryPressureAgent.Type;
+
+export const HostMemoryPressure = Schema.Struct({
+  level: HostMemoryPressureLevel,
+  /** Percent of the last 10 s in which every task on the host waited on memory (Linux PSI `full`). */
+  hostStallPercent: Schema.NullOr(Schema.Number),
+  /** The same for agent processes only, which the kernel throttles first. */
+  agentsStallPercent: Schema.NullOr(Schema.Number),
+  /** The largest agents by memory, largest first; empty while the level is `none`. */
+  heaviestAgents: Schema.Array(HostMemoryPressureAgent),
+});
+export type HostMemoryPressure = typeof HostMemoryPressure.Type;
 
 export const HostResourcesSnapshot = Schema.Struct({
   sampledAt: NonNegativeInt,
@@ -12,6 +35,7 @@ export const HostResourcesSnapshot = Schema.Struct({
   cpuCount: NonNegativeInt,
   availableMemoryBytes: NonNegativeInt,
   totalMemoryBytes: NonNegativeInt,
+  memoryPressure: Schema.optionalKey(HostMemoryPressure),
 });
 export type HostResourcesSnapshot = typeof HostResourcesSnapshot.Type;
 

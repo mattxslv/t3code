@@ -54,3 +54,23 @@ describe("applyServerConfigProjection settingsUpdated", () => {
     expect(nextSettings.providerInstances.claude.config.launchArgs).toBe("--verbose");
   });
 });
+
+describe("applyServerConfigProjection memoryPressureUpdated", () => {
+  it("keeps pressure across a reconnect snapshot and drops it once pressure ends", () => {
+    const pressure = (level: "none" | "severe") =>
+      ({
+        type: "memoryPressureUpdated",
+        version: 1,
+        payload: { level, hostStallPercent: 12, agentsStallPercent: 40, heaviestAgents: [] },
+      }) as ServerConfigStreamEvent;
+    const snapshot = { type: "snapshot", version: 1, config: {} } as ServerConfigStreamEvent;
+    const severe = applyServerConfigProjection(
+      applyServerConfigProjection(Option.none(), snapshot),
+      pressure("severe"),
+    );
+    const reconnected = applyServerConfigProjection(severe, snapshot);
+    expect(Option.getOrThrow(reconnected).config.memoryPressure?.level).toBe("severe");
+    const ended = applyServerConfigProjection(reconnected, pressure("none"));
+    expect(Option.getOrThrow(ended).config.memoryPressure).toBeUndefined();
+  });
+});
