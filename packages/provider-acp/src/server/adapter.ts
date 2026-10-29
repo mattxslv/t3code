@@ -1324,6 +1324,8 @@ interface SnapshotMessageState {
   loadingIndex: number;
 }
 
+/** How long a Stop waits for the agent to confirm before the user is offered Force stop. */
+const ACP_STOP_CONFIRM_TIMEOUT_MS = 10_000;
 const TOOL_UPDATE_PERSIST_EVERY = 10;
 
 // Agents can resend whole calls while streaming arguments.
@@ -8000,8 +8002,12 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                       ) {
                         // ACP cancel leaves native children alive; close confirms session-wide Stop.
                         pendingStopCloseTurn = interruptContext;
-                        const closed = yield* runtime.closeSession().pipe(
-                          Effect.timeoutOption("10 seconds"),
+                        // Interruptible, or neither this timeout nor the caller's could end a hung close.
+                        const closed = yield* restore(
+                          runtime
+                            .closeSession()
+                            .pipe(Effect.timeoutOption(ACP_STOP_CONFIRM_TIMEOUT_MS)),
+                        ).pipe(
                           Effect.mapError(
                             (cause) =>
                               new ProviderAdapter.ProviderAdapterProtocolError({
@@ -8013,10 +8019,11 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                           ),
                         );
                         if (Option.isNone(closed)) {
-                          return yield* new ProviderAdapter.ProviderAdapterProtocolError({
+                          return yield* new ProviderAdapter.ProviderAdapterInterruptTimeoutError({
                             driver,
-                            detail:
-                              "The agent did not confirm session close; background work may still run",
+                            providerThreadId: turnInput.providerThread.id,
+                            providerTurnId: turnInput.providerTurnId,
+                            timeoutMs: ACP_STOP_CONFIRM_TIMEOUT_MS,
                           });
                         }
                         yield* runtimeCallbackPermit.withPermit(
@@ -8246,15 +8253,16 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                         }
                       }
                       const stopped = yield* Deferred.await(context.completed).pipe(
-                        Effect.timeoutOption("10 seconds"),
+                        Effect.timeoutOption(ACP_STOP_CONFIRM_TIMEOUT_MS),
                       );
+                      // The turn stays open: the agent may still be working, and the user
+                      // decides whether to Force stop it.
                       if (Option.isNone(stopped)) {
-                        if (!context.finalized) {
-                          yield* finalizeTurn(context, "interrupted");
-                        }
-                        return yield* new ProviderAdapter.ProviderAdapterProtocolError({
+                        return yield* new ProviderAdapter.ProviderAdapterInterruptTimeoutError({
                           driver,
-                          detail: `ACP provider turn ${turnInput.providerTurnId} did not acknowledge cancellation before the interrupt timeout`,
+                          providerThreadId: turnInput.providerThread.id,
+                          providerTurnId: turnInput.providerTurnId,
+                          timeoutMs: ACP_STOP_CONFIRM_TIMEOUT_MS,
                         });
                       }
                     });
@@ -8281,14 +8289,15 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             },
             (effect, turnInput) =>
               effect.pipe(
-                Effect.mapError(
-                  (cause) =>
-                    new ProviderAdapter.ProviderAdapterInterruptError({
-                      driver,
-                      providerThreadId: turnInput.providerThread.id,
-                      providerTurnId: turnInput.providerTurnId,
-                      cause,
-                    }),
+                Effect.mapError((cause) =>
+                  cause._tag === "ProviderAdapterInterruptTimeoutError"
+                    ? cause
+                    : new ProviderAdapter.ProviderAdapterInterruptError({
+                        driver,
+                        providerThreadId: turnInput.providerThread.id,
+                        providerTurnId: turnInput.providerTurnId,
+                        cause,
+                      }),
                 ),
               ),
           ),
