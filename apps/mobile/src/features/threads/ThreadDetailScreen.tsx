@@ -160,7 +160,11 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { orchestrationEnvironment } from "../../state/orchestration";
 import { useDelayedStatus } from "../../lib/useDelayedStatus";
 import type { PendingUserInputDraftAnswer } from "@t3tools/client-runtime/state/pending-user-input";
-import type { RunStopPresentation } from "@t3tools/client-runtime/state/thread-execution";
+import {
+  quietRunId,
+  quietRunSince,
+  type RunStopPresentation,
+} from "@t3tools/client-runtime/state/thread-execution";
 import type {
   PendingApproval,
   PendingUserInput,
@@ -550,6 +554,28 @@ function ThreadDetailBody(props: ThreadDetailScreenProps) {
   const canForceStop =
     useAtomValue(orchestrationEnvironment.forceStopThread.permissionAtom(props.environmentId)) &&
     props.serverConfig?.environment.capabilities.threadForceStop === true;
+  // The run the server saw go quiet, not the latest one: a queued follow-up can be newer.
+  const quietRunTarget = quietRunId(props.serverConfig, props.selectedThread.id) ?? undefined;
+  const stopQuietRun = async () => {
+    const result = await interruptThreadTurn({
+      environmentId: props.environmentId,
+      input:
+        quietRunTarget === undefined
+          ? { threadId: props.selectedThread.id }
+          : { threadId: props.selectedThread.id, runId: quietRunTarget },
+    });
+    if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
+      const error = squashAtomCommandFailure(result);
+      Dialog.alert(
+        "Could not stop the turn",
+        error instanceof Error ? error.message : "Try again.",
+      );
+    }
+  };
+  const quietSince =
+    props.activeWorkStartedAt === null
+      ? null
+      : quietRunSince(props.serverConfig, props.selectedThread.id);
   const [forceStoppingKey, setForceStoppingKey] = useState<string | null>(null);
   // The run that ignored Stop, so a confirmation left open cannot hit a newer run.
   const forceStop = async (runId: RunId | undefined) => {
@@ -720,6 +746,38 @@ function ThreadDetailBody(props: ThreadDetailScreenProps) {
         onPress: () => {
           Keyboard.dismiss();
           openLinkedThread({ environmentId: props.environmentId, threadId: childInput.id });
+        },
+      };
+    }
+    if (quietSince !== null && contentPresentationKind === "ready") {
+      return {
+        kind: "quiet",
+        quietSince,
+        action: {
+          label: statusPending ? "Stopping..." : "Stop",
+          accessibilityLabel: "Stop the quiet turn",
+          disabled: !props.canOperateThread || statusPending,
+          onPress: () =>
+            Dialog.alert(
+              "Stop this turn?",
+              "The agent has sent nothing for a while. A long tool may still be running.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Stop",
+                  onPress: () => void stopQuietRun(),
+                },
+                ...(canForceStop
+                  ? [
+                      {
+                        text: "Force stop",
+                        style: "destructive" as const,
+                        onPress: () => void forceStop(quietRunTarget),
+                      },
+                    ]
+                  : []),
+              ],
+            ),
         },
       };
     }

@@ -56,7 +56,7 @@ describe("applyServerConfigProjection settingsUpdated", () => {
 });
 
 describe("applyServerConfigProjection memoryPressureUpdated", () => {
-  it("keeps pressure across a reconnect snapshot and drops it once pressure ends", () => {
+  it("keeps pressure and quiet runs across a reconnect snapshot and drops them once they end", () => {
     const pressure = (level: "none" | "severe") =>
       ({
         type: "memoryPressureUpdated",
@@ -64,13 +64,27 @@ describe("applyServerConfigProjection memoryPressureUpdated", () => {
         payload: { level, hostStallPercent: 12, agentsStallPercent: 40, heaviestAgents: [] },
       }) as ServerConfigStreamEvent;
     const snapshot = { type: "snapshot", version: 1, config: {} } as ServerConfigStreamEvent;
+    const quietRuns = (threadIds: ReadonlyArray<string>) =>
+      ({
+        type: "quietRunsUpdated",
+        version: 1,
+        payload: { runs: threadIds.map((threadId) => ({ threadId, quietSince: 0 })) },
+      }) as unknown as ServerConfigStreamEvent;
     const severe = applyServerConfigProjection(
-      applyServerConfigProjection(Option.none(), snapshot),
-      pressure("severe"),
+      applyServerConfigProjection(
+        applyServerConfigProjection(Option.none(), snapshot),
+        pressure("severe"),
+      ),
+      quietRuns(["thread-a"]),
     );
-    const reconnected = applyServerConfigProjection(severe, snapshot);
-    expect(Option.getOrThrow(reconnected).config.memoryPressure?.level).toBe("severe");
-    const ended = applyServerConfigProjection(reconnected, pressure("none"));
+    const reconnected = Option.getOrThrow(applyServerConfigProjection(severe, snapshot));
+    expect(reconnected.config.memoryPressure?.level).toBe("severe");
+    expect(reconnected.config.quietRuns?.map((run) => run.threadId)).toEqual(["thread-a"]);
+    const ended = applyServerConfigProjection(
+      applyServerConfigProjection(Option.some(reconnected), pressure("none")),
+      quietRuns([]),
+    );
     expect(Option.getOrThrow(ended).config.memoryPressure).toBeUndefined();
+    expect(Option.getOrThrow(ended).config.quietRuns).toBeUndefined();
   });
 });

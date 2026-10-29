@@ -361,6 +361,7 @@ export interface ServerConfigSubscriptionOptions {
   readonly environmentThemes?: boolean;
   readonly usageLimitSources?: boolean;
   readonly memoryPressure?: boolean;
+  readonly quietRuns?: boolean;
   readonly usageLimitsCommand?: boolean;
 }
 
@@ -483,6 +484,7 @@ export const makeEnvironmentServerConfigState = Effect.fn("EnvironmentServerConf
       ...(subscription.environmentThemes === true ? { environmentThemes: true } : {}),
       ...(subscription.usageLimitSources === true ? { usageLimitSources: true } : {}),
       ...(subscription.memoryPressure === true ? { memoryPressure: true } : {}),
+      ...(subscription.quietRuns === true ? { quietRuns: true } : {}),
       ...(subscription.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
     }).pipe(
       Stream.runForEach((event) =>
@@ -753,6 +755,7 @@ export function createServerEnvironmentAtoms<R, E>(
     readonly environmentThemes?: boolean;
     readonly usageLimitSources?: boolean;
     readonly memoryPressure?: boolean;
+    readonly quietRuns?: boolean;
     readonly usageLimitsCommand?: boolean;
   },
 ) {
@@ -769,6 +772,7 @@ export function createServerEnvironmentAtoms<R, E>(
           ...(options.environmentThemes === true ? { environmentThemes: true } : {}),
           ...(options.usageLimitSources === true ? { usageLimitSources: true } : {}),
           ...(options.memoryPressure === true ? { memoryPressure: true } : {}),
+          ...(options.quietRuns === true ? { quietRuns: true } : {}),
           ...(options.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
         }),
       )

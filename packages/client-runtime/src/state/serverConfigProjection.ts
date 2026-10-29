@@ -15,7 +15,8 @@ export function withoutEnvironmentThemes(config: ServerConfig): ServerConfig {
   if (
     config.environmentThemes === undefined &&
     config.usageLimitSources === undefined &&
-    config.memoryPressure === undefined
+    config.memoryPressure === undefined &&
+    config.quietRuns === undefined
   ) {
     return config;
   }
@@ -23,6 +24,7 @@ export function withoutEnvironmentThemes(config: ServerConfig): ServerConfig {
     environmentThemes: _themes,
     usageLimitSources: _sources,
     memoryPressure: _pressure,
+    quietRuns: _quietRuns,
     ...rest
   } = config;
   return rest;
@@ -84,8 +86,10 @@ export function applyServerConfigProjection(
       const carriedPressure = Option.isSome(current)
         ? current.value.config.memoryPressure
         : undefined;
+      const carriedQuietRuns = Option.isSome(current) ? current.value.config.quietRuns : undefined;
       const config: ServerConfig = {
         ...event.config,
+        ...(carriedQuietRuns === undefined ? {} : { quietRuns: carriedQuietRuns }),
         ...(carriedThemes === undefined ? {} : { environmentThemes: carriedThemes }),
         ...(carriedSources === undefined ? {} : { usageLimitSources: carriedSources }),
         ...(carriedPressure === undefined ? {} : { memoryPressure: carriedPressure }),
@@ -145,6 +149,16 @@ export function applyServerConfigProjection(
                   ...config,
                   memoryPressure: reuseUnchanged(projection.config.memoryPressure, event.payload),
                 },
+          latestEvent: event,
+          source: "live",
+        };
+      });
+    case "quietRunsUpdated":
+      return Option.map(current, (projection) => {
+        const { quietRuns: _previous, ...config } = projection.config;
+        return {
+          config:
+            event.payload.runs.length === 0 ? config : { ...config, quietRuns: event.payload.runs },
           latestEvent: event,
           source: "live",
         };

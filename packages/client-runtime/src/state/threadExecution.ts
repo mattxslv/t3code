@@ -12,6 +12,8 @@ import {
   type OrchestrationV2NotificationSource,
   type OrchestrationV2PendingBackgroundTask,
   type OrchestrationV2ProviderGoal,
+  type RunId,
+  type ServerConfig,
   type ServerProviderModel,
   type OrchestrationV2ExecutionNode,
   type OrchestrationV2ThreadProjection,
@@ -341,6 +343,23 @@ export function presentRunStop(
     requestedAt: DateTime.formatIso(request.startedAt ?? request.updatedAt),
     background: active === null,
   };
+}
+
+/** When a running turn last heard from its provider, once that is long enough ago to flag. */
+/** The quiet run itself, so Stop and Force stop cannot reach a newer one. */
+export function quietRunId(
+  config: Pick<ServerConfig, "quietRuns"> | null | undefined,
+  threadId: ThreadId,
+): RunId | null {
+  return config?.quietRuns?.find((candidate) => candidate.threadId === threadId)?.runId ?? null;
+}
+
+export function quietRunSince(
+  config: Pick<ServerConfig, "quietRuns"> | null | undefined,
+  threadId: ThreadId,
+): string | null {
+  const run = config?.quietRuns?.find((candidate) => candidate.threadId === threadId);
+  return run === undefined ? null : DateTime.formatIso(run.quietSince);
 }
 
 export interface PendingBackgroundWorkItem {
