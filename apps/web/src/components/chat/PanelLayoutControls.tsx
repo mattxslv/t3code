@@ -65,7 +65,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
       <SquareMenuIcon className="size-4" />
     </Toggle>
   );
-  const threadPanelControl = (
+  const threadPanelControl = showThreadPanelControl ? (
     <Tooltip>
       <TooltipTrigger render={<span className="flex shrink-0" />}>
         {threadPanelPresentation === "popover" ? (
@@ -79,14 +79,38 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
         {threadPanelShortcutLabel ? ` (${threadPanelShortcutLabel})` : ""}
       </TooltipPopup>
     </Tooltip>
-  );
+  ) : null;
+
+  const rightPanelControl = showRightPanelControl ? (
+    <Tooltip>
+      <TooltipTrigger render={<span className="flex shrink-0" />}>
+        <Toggle
+          className="shrink-0 [-webkit-app-region:no-drag]"
+          pressed={rightPanelOpen}
+          onPressedChange={onToggleRightPanel}
+          aria-label="Toggle workspace panel"
+          data-right-panel-toggle
+          variant="ghost"
+          size="sm"
+          disabled={!rightPanelAvailable}
+        >
+          <PanelRightIcon className={cn("size-4", reversed && "-scale-x-100")} />
+        </Toggle>
+      </TooltipTrigger>
+      <TooltipPopup side="bottom">
+        {rightPanelAvailable
+          ? `Toggle workspace panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}`
+          : rightPanelUnavailableLabel}
+      </TooltipPopup>
+    </Tooltip>
+  ) : null;
 
   return (
     <div
       className="flex h-full shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
       data-panel-layout-controls
     >
-      {showThreadPanelControl ? threadPanelControl : null}
+      {reversed ? rightPanelControl : threadPanelControl}
       {showTerminalControl ? (
         <Tooltip>
           <TooltipTrigger render={<span className="flex shrink-0" />}>
@@ -109,29 +133,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
           </TooltipPopup>
         </Tooltip>
       ) : null}
-      {showRightPanelControl ? (
-        <Tooltip>
-          <TooltipTrigger render={<span className="flex shrink-0" />}>
-            <Toggle
-              className="shrink-0 [-webkit-app-region:no-drag]"
-              pressed={rightPanelOpen}
-              onPressedChange={onToggleRightPanel}
-              aria-label="Toggle workspace panel"
-              data-right-panel-toggle
-              variant="ghost"
-              size="sm"
-              disabled={!rightPanelAvailable}
-            >
-              <PanelRightIcon className={cn("size-4", reversed && "-scale-x-100")} />
-            </Toggle>
-          </TooltipTrigger>
-          <TooltipPopup side="bottom">
-            {rightPanelAvailable
-              ? `Toggle workspace panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}`
-              : rightPanelUnavailableLabel}
-          </TooltipPopup>
-        </Tooltip>
-      ) : null}
+      {reversed ? threadPanelControl : rightPanelControl}
     </div>
   );
 });
