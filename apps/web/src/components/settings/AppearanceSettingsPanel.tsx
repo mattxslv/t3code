@@ -33,6 +33,7 @@ import { AdvancedSettings } from "./AdvancedSettings";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
 import { TypographySection } from "./TypographySettings";
 import { Input } from "../ui/input";
+import { ComposerUsageSettings } from "./ComposerUsageSettings";
 
 const DIVIDER_PRESETS = [
   ["#52525B", "Subtle gray"],
@@ -172,6 +173,7 @@ export function AppearanceSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="appearance-interface" title="Interface">
+        <ComposerUsageSettings />
         <SettingsRow
           {...searchableSetting("workspace-layout")}
           description="Choose where the editor and project navigation appear. Chat stays between them."

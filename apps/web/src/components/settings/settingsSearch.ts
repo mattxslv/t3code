@@ -307,6 +307,18 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["sidebar position left right reversed editor navigation"],
   },
   {
+    id: "codex-composer-usage-account",
+    title: "Codex composer usage account",
+    to: "/settings/appearance",
+    searchTerms: ["limits subscription remaining allowance monitor account"],
+  },
+  {
+    id: "claude-composer-usage-account",
+    title: "Claude composer usage account",
+    to: "/settings/appearance",
+    searchTerms: ["limits subscription remaining allowance monitor account"],
+  },
+  {
     // Prefixed because the slider control already owns the `glass-opacity` id.
     id: "setting-glass-opacity",
     title: "Glass opacity",
