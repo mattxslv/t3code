@@ -31,6 +31,21 @@ vp run dev:desktop --home-dir .t3/personal-dev --no-seed
 The development home is separate from an installed T3 Code instance. Do not point development
 servers at the live `~/.t3/userdata` directory.
 
+## Installed Windows app
+
+Packaged builds are branded **T3 Code Personal** (app ID `com.mattxslv.t3code.personal`) and
+install beside the official T3 Code: `%LOCALAPPDATA%\Programs\t3code-personal`, Electron profile
+`%APPDATA%\t3code-personal`, state in `~/.t3-personal`. Local builds have no update feed, so the
+app never replaces itself with an official release. Requires Rust and VS Build Tools (C++).
+
+```sh
+vp run dist:desktop:win:x64
+release/T3-Code-Personal-<version>-x64.exe
+```
+
+Reinstall over the existing copy after pulling or committing changes. Day-to-day work happens in
+the dev server, which uses `.t3/personal-dev` and is separate from both installed apps.
+
 ## Pull updates
 
 ```sh
