@@ -1,7 +1,7 @@
 # Personal fork handoff
 
 Updated: 2026-10-30. Repository: https://github.com/mattxslv/t3code. Working branch:
-`personal/release` (based on the `v0.1.3` release). Official upstream: https://github.com/pingdotgg/t3code.
+`personal/release` (based on the `v0.1.5` release). Official upstream: https://github.com/pingdotgg/t3code.
 
 ## Current behavior
 
@@ -18,9 +18,14 @@ Updated: 2026-10-30. Repository: https://github.com/mattxslv/t3code. Working bra
   The tooltip shows only weekly remaining allowance, a progress bar, and reset information.
   Provider identity and connection/stale status remain in the accessible button label.
   Clicking opens Usage → Limits. Unknown allowances are never invented.
-- Explorer divider color supports presets and custom HEX. On 0.1.3 the explorer has a fixed
+- Explorer divider color supports presets and custom HEX. The release explorer has a fixed
   width, so the color applies to its border; there is no resize handle.
-- The composer keeps the release layout; the usage bar sits just left of the paperclip.
+- **Classic composer controls** (on by default) keep the pre-0.1.5 composer: model, effort,
+  and access menus on the left with chevrons and the effort gauge icon, access always shown,
+  full model names, and usage, attach, and send on the right. Off restores the release
+  composer with the usage bar before send. The flag reaches `TraitsPicker` as the
+  `classicTrigger` prop because `TraitsPicker` is in `composerDraftStore`'s import graph;
+  importing `useSettings` there creates a cycle through `lib/utils`.
 - With word wrap disabled, overflowing source previews have a synchronized bottom horizontal
   scrollbar, including editable and read-only previews.
 - Composer paste/drop defaults to local path references rather than file uploads. Desktop
@@ -80,5 +85,6 @@ changed-source lint, changed-file formatting, and the production web build. The 
 - Latest tooltip/color changes were format/lint checked; no visual browser capture was made.
 - Existing CI/release workflows use upstream infrastructure. No custom updater, signed release,
   packaged installer, or fork-specific release pipeline has been configured.
-- Keep changes focused when merging upstream; the composer, canvas, and generated route tree
-  are likely conflict points. No dependency additions were needed.
+- Keep changes focused when merging upstream; the composer footer, composer control triggers
+  (`ComposerControlsBar`, `ProviderModelPicker`, `TraitsPicker`, `ComposerFooterControls`),
+  canvas, and generated route tree are likely conflict points. No dependency additions were needed.
