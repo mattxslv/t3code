@@ -1,7 +1,7 @@
 # Personal fork development
 
-The customized branch is `personal/release`, built on the latest official release tag (currently
-`v0.1.3`) so the app matches the released T3 Code. `personal/main` is the older port onto
+The customized branch is `personal/release`, built on the latest official release tag so the app
+matches the released T3 Code. `personal/main` is the older port onto
 unreleased upstream `main`; `main` tracks the official repository.
 
 ## Omarchy laptop
@@ -33,20 +33,30 @@ vp run dev:desktop --home-dir .t3/personal-dev --no-seed
 The development home is separate from an installed T3 Code instance. Do not point development
 servers at the live `~/.t3/userdata` directory.
 
-## Installed Windows app
+## Installed app (Windows and Omarchy)
 
-Packaged builds are branded **T3 Code Personal** (app ID `com.mattxslv.t3code.personal`) and
-install beside the official T3 Code: `%LOCALAPPDATA%\Programs\t3code-personal`, Electron profile
-`%APPDATA%\t3code-personal`, state in `~/.t3-personal`. Local builds have no update feed, so the
-app never replaces itself with an official release. Requires Rust and VS Build Tools (C++).
+Releases are branded **T3 Code Personal** (app ID `com.mattxslv.t3code.personal`) and run beside
+the official T3 Code, with their own profile and state in `~/.t3-personal`. They are published as
+[releases of this fork](https://github.com/mattxslv/t3code/releases) and update themselves from
+there, like the official app.
 
-```sh
-vp run dist:desktop:win:x64
-release/T3-Code-Personal-<version>-x64.exe
-```
+First install only:
 
-Reinstall over the existing copy after pulling or committing changes. Day-to-day work happens in
-the dev server, which uses `.t3/personal-dev` and is separate from both installed apps.
+- **Windows:** download `T3-Code-Personal-<version>-x64.exe` from the latest release and run it.
+- **Omarchy:** AppImages need FUSE 2.
+
+  ```sh
+  sudo pacman -S --needed fuse2
+  mkdir -p ~/Applications && cd ~/Applications
+  gh release download --repo mattxslv/t3code --pattern '*.AppImage' --clobber
+  chmod +x T3-Code-Personal-*.AppImage && ./T3-Code-Personal-*.AppImage
+  ```
+
+  The app adds its own launcher entry on first start. Keep the AppImage where it is so updates
+  can replace it.
+
+Versions map official `x.y.z` to `x.y.(z*100+n)`: official `0.1.5` becomes `0.1.500`, and later
+fork-only builds on it become `0.1.501`, `0.1.502`, and so on.
 
 ## Pull updates
 
@@ -66,19 +76,24 @@ attachment action. Local paths require a local agent; remote agents need uploade
 
 ## Integrate official updates
 
-Follow official releases, not upstream `main`. With a clean working tree, replacing `v0.1.4`
-with the new release tag:
+This is automatic. The **Personal sync** workflow checks for a new official release every six
+hours, merges it into `personal/release`, type-checks it, and starts **Personal release**, which
+builds Windows and Linux and publishes a release. Installed apps then offer the update.
+`.github/workflows` always keeps this fork's version during the merge; inherited upstream
+workflows stay disabled.
+
+When the merge conflicts or fails type-checking, nothing is pushed. Instead the workflow opens an
+issue titled "Update to official vX.Y.Z needs attention". To finish it, replacing `v0.1.6`:
 
 ```sh
 git fetch upstream --tags
 git switch personal/release
-git merge v0.1.4
-vp run check:changed v0.1.4
+git merge v0.1.6
+# resolve conflicts, keeping the fork's features and look
 git push origin personal/release
 ```
 
-Resolve conflicts and verify on Windows and Linux before pushing the customized branch. The
-official CI uses custom runner infrastructure; inherited release workflows are not a ready-made
-fork release pipeline. Development builds and local packaging instructions are described in
-[Development](development.md#desktop-artifacts). No signed release or custom update feed is
-configured by these UI changes.
+Pushing to `personal/release` builds a new release, as does any other change pushed there.
+Run either workflow by hand from the Actions tab. Local packaging for testing is described in
+[Development](development.md#desktop-artifacts); local builds have no update feed unless
+`T3CODE_DESKTOP_UPDATE_REPOSITORY` is set.
