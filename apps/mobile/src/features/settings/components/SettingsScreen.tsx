@@ -1,6 +1,7 @@
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { ReactNode } from "react";
 import { Platform, View } from "react-native";
+import { useResolveClassNames } from "uniwind";
 
 import type { AppBarProps } from "../../../components/ui/AppBar.types";
 import { AppBar } from "../../../components/ui/AppBar";
@@ -40,6 +41,7 @@ export function SettingsScreen(
   // Settings' grouped cards only lift off the screen surface, so the folded Duo doesn't take
   // the workspace's drawer surface here.
   const surfaceClassName = cover ? "bg-screen" : workspaceRoot ? surface.className : "bg-sheet";
+  const surfaceStyle = useResolveClassNames(surfaceClassName);
 
   return (
     <View collapsable={false} className={`flex-1 ${surfaceClassName}`}>
@@ -52,7 +54,11 @@ export function SettingsScreen(
         menus={Platform.OS === "android" ? props.menus : undefined}
         onBack={workspaceRoot ? undefined : () => navigation.goBack()}
         hideBottomBorder={!props.formSheet}
-        options={props.options}
+        options={{
+          ...props.options,
+          // The column paints this under the Duo's vertical bar, outside the screen's safe area.
+          contentStyle: { backgroundColor: surfaceStyle.backgroundColor },
+        }}
       />
       <ScreenScrollViewBottomInset value={deviceType === "pad" || compactTabs ? 80 : 0}>
         <ScreenScrollViewSurface value={surfaceClassName}>

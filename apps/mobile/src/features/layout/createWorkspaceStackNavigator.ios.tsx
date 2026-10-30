@@ -163,6 +163,8 @@ function ColumnScreen(props: {
             />
             <ColumnContent
               primary={props.primary}
+              // A screen that draws its own surface carries it under the Duo's vertical bar too.
+              backgroundColor={StyleSheet.flatten(options.contentStyle)?.backgroundColor}
               insetHorizontally={
                 (options as AppNativeStackNavigationOptions).nativeContentInsetHorizontally
               }
