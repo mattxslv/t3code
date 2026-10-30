@@ -110,7 +110,7 @@ function UsageIndicator({
               aria-hidden
               className={
                 detailed
-                  ? "relative block h-5 w-28 overflow-hidden rounded-md @min-[540px]/composer-surface:w-40"
+                  ? "relative block h-5 w-36 overflow-hidden rounded-md @min-[540px]/composer-surface:w-52"
                   : "relative block h-1 w-10 overflow-hidden rounded-full bg-muted"
               }
               style={{
