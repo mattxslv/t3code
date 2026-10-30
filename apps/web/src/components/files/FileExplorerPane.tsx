@@ -4,6 +4,7 @@ import { RightPanelResizeHandle } from "~/components/preview/RightPanelResizeHan
 import { RESIZABLE_WIDTH_PROPERTY, useResizableWidth } from "~/hooks/useResizableWidth";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
+import { useClientSettings } from "~/hooks/useSettings";
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 560;
@@ -17,6 +18,7 @@ export function FileExplorerPane({
   children: ReactNode;
 }) {
   const [maxWidth, setMaxWidth] = useState(MAX_WIDTH);
+  const dividerColor = useClientSettings((settings) => settings.editorDividerColor);
   const { width, setWidth, handlers } = useResizableWidth({
     storageKey: "t3code.fileExplorerWidth",
     defaultWidth: 256,
@@ -40,12 +42,15 @@ export function FileExplorerPane({
       aria-label="File explorer"
       className={cn(
         "relative flex min-h-0 min-w-0 shrink-0 bg-background",
-        resizable ? "border-l border-border/60" : "flex-1",
+        resizable ? "border-l border-(--resize-handle-idle)" : "flex-1",
       )}
       style={
         resizable
           ? ({
               [RESIZABLE_WIDTH_PROPERTY]: `${width}px`,
+              "--resize-handle-idle": dividerColor,
+              "--resize-handle-hover": `color-mix(in srgb, ${dividerColor} 80%, var(--foreground))`,
+              "--resize-handle-active": `color-mix(in srgb, ${dividerColor} 60%, var(--foreground))`,
               width: `var(${RESIZABLE_WIDTH_PROPERTY})`,
             } as CSSProperties)
           : undefined

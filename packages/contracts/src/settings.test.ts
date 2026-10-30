@@ -28,6 +28,19 @@ const encodeServerSettings = Schema.encodeSync(ServerSettings);
 const encodeServerSettingsPatch = Schema.encodeSync(ServerSettingsPatch);
 const decodeClaudeSettings = Schema.decodeUnknownSync(ClaudeSettings);
 
+describe("editor divider preferences", () => {
+  it("defaults old settings and round-trips valid colors without accepting CSS expressions", () => {
+    expect(decodeClientSettings({}).editorDividerColor).toBe("#A1A1AA");
+    const settings = decodeClientSettings({ editorDividerColor: "#14b8a6" });
+    expect(decodeClientSettings(encodeClientSettings(settings)).editorDividerColor).toBe("#14b8a6");
+    expect(decodeClientSettingsPatch({ editorDividerColor: "#3B82F6" })).toEqual({ editorDividerColor: "#3B82F6" });
+    expect(decodeClientSettingsPatch({})).not.toHaveProperty("editorDividerColor");
+    for (const editorDividerColor of ["red", "#fff", "#12345678", "var(--primary)", "#GGGGGG"]) {
+      expect(() => decodeClientSettingsPatch({ editorDividerColor })).toThrow();
+    }
+  });
+});
+
 describe("storage cleanup settings", () => {
   it("keeps cleanup disabled for existing installations", () => {
     expect(decodeServerSettings({}).worktreeCleanup).toBeNull();
