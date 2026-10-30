@@ -442,6 +442,8 @@ export interface ChatComposerProps {
   pullRequestRepository: string | null;
   threadPullRequests: ReadonlyArray<ThreadPullRequestLink> | undefined;
   onComposerOverlayHeightChange: (height: number) => void;
+  /** Path drops stop propagation, so the workspace drop overlay is cleared here instead. */
+  onFileDropHandled: () => void;
   /** The new-thread strip names the permissions, so the controls row hides its chip. */
   permissionsShownInStrip: boolean;
 
@@ -565,6 +567,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     pullRequestRepository,
     threadPullRequests,
     onComposerOverlayHeightChange,
+    onFileDropHandled,
     promptRef,
     composerRef,
     composerImagesRef,
@@ -3214,6 +3217,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             event.preventDefault();
             event.stopPropagation();
             setIsDragOverComposer(false);
+            onFileDropHandled();
             if (paths.length > 0) insertLocalFilePaths(paths, "end");
             else referenceLocalFilesStable([...files, ...folders], "end");
             return;
