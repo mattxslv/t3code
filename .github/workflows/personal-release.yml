@@ -1,0 +1,116 @@
+name: Personal release
+
+# Builds T3 Code Personal for Windows and Linux and publishes it as a release on this fork.
+# Installed apps update from these releases (app-update.yml points at this repository).
+on:
+  push:
+    branches: [personal/release]
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: personal-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.version.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
+      base: ${{ steps.version.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'personal/release' }}
+          fetch-depth: 0
+      - name: Compute personal version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --no-tags https://github.com/pingdotgg/t3code.git 'refs/tags/v*:refs/tags/v*'
+          base=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*' HEAD)
+          IFS=. read -r major minor patch <<<"${base#v}"
+          # Official x.y.z maps to x.y.(z*100+build) so updates stay plain, increasing releases.
+          first=$((patch * 100))
+          last=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName -q '.[].tagName' \
+            | sed -n "s/^personal-v${major}\.${minor}\.\([0-9]*\)$/\1/p" \
+            | awk -v lo="$first" -v hi="$((first + 99))" '$1 >= lo && $1 <= hi' | sort -n | tail -1)
+          build=$(( ${last:-$((first - 1))} + 1 ))
+          if (( build > first + 99 )); then echo "More than 100 personal builds of $base" >&2; exit 1; fi
+          echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+          echo "version=${major}.${minor}.${build}" >>"$GITHUB_OUTPUT"
+          echo "base=$base" >>"$GITHUB_OUTPUT"
+          echo "Building ${major}.${minor}.${build} from $base at $(git rev-parse --short HEAD)"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            target: nsis
+          - os: ubuntu-latest
+            platform: linux
+            target: AppImage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+      - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
+        with:
+          node-version-file: package.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux build prerequisites
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config imagemagick
+      - run: vp install
+      - name: Build desktop artifact
+        shell: bash
+        env:
+          T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
+        run: >-
+          node scripts/build-desktop-artifact.ts
+          --platform ${{ matrix.platform }} --target ${{ matrix.target }} --arch x64
+          --build-version ${{ needs.version.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal-${{ matrix.platform }}
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/*.AppImage
+            release/latest*.yml
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          BASE: ${{ needs.version.outputs.base }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+          gh release create "personal-v$VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "${{ needs.version.outputs.sha }}" \
+            --title "T3 Code Personal $VERSION" \
+            --notes "Personal build based on official T3 Code $BASE ($(echo ${{ needs.version.outputs.sha }} | cut -c1-12))." \
+            --latest

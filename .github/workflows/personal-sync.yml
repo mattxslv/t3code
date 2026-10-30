@@ -1,0 +1,100 @@
+name: Personal sync
+
+# Merges each new official T3 Code release into personal/release, then builds it.
+# Conflicts or failed checks open an issue instead of pushing.
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: personal-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      merged: ${{ steps.push.outputs.merged }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: personal/release
+          fetch-depth: 0
+      - name: Merge latest official release
+        id: merge
+        run: |
+          set -euo pipefail
+          latest=$(gh release view --repo pingdotgg/t3code --json tagName -q .tagName)
+          git fetch --quiet --no-tags https://github.com/pingdotgg/t3code.git "refs/tags/$latest:refs/tags/$latest"
+          if git merge-base --is-ancestor "$latest" HEAD; then
+            echo "Already on $latest."
+            exit 0
+          fi
+          echo "latest=$latest" >>"$GITHUB_ENV"
+          git config user.name "mattxslv"
+          git config user.email "79420609+mattxslv@users.noreply.github.com"
+          git merge --no-commit --no-ff "$latest" || true
+          # Inherited upstream workflows stay disabled here, and the job token may not push workflow changes.
+          git restore --source=HEAD --staged --worktree -- .github/workflows
+          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+            git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/' >"$RUNNER_TEMP/conflicts.md"
+            git merge --abort
+            echo "problem=conflicts" >>"$GITHUB_ENV"
+            exit 0
+          fi
+          git commit --no-edit --quiet
+          echo "merged_locally=true" >>"$GITHUB_ENV"
+      - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
+        if: env.merged_locally == 'true'
+        with:
+          node-version-file: package.json
+      - name: Check merged code
+        id: check
+        if: env.merged_locally == 'true'
+        run: |
+          set -o pipefail
+          vp install
+          for pkg in @t3tools/contracts @t3tools/web @t3tools/desktop; do
+            vp run --filter "$pkg" typecheck 2>&1 | tail -40 | tee -a "$RUNNER_TEMP/check.log" || echo "problem=checks" >>"$GITHUB_ENV"
+          done
+      - name: Push merge
+        if: env.merged_locally == 'true' && env.problem == ''
+        run: |
+          git push origin HEAD:personal/release
+          echo "merged=true" >>"$GITHUB_OUTPUT"
+        id: push
+      - name: Report merge outcome
+        if: env.problem != ''
+        run: |
+          set -euo pipefail
+          title="Update to official $latest needs attention"
+          if [ "$problem" = conflicts ]; then
+            body=$(printf 'Merging official T3 Code `%s` into `personal/release` conflicts in:\n\n%s\n\nResolve locally (`git merge %s`), push, and the release builds automatically.' "$latest" "$(cat "$RUNNER_TEMP/conflicts.md")" "$latest")
+          else
+            body=$(printf 'Official T3 Code `%s` merged cleanly but type-checking failed, so nothing was pushed.\n\n```\n%s\n```' "$latest" "$(tail -60 "$RUNNER_TEMP/check.log")")
+          fi
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number -q '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
+      - name: Keep inherited upstream workflows disabled
+        if: always()
+        run: |
+          gh workflow list --repo "$GITHUB_REPOSITORY" --all --json name,path,state \
+            -q '.[] | select(.state == "active") | select(.path | test("/personal-") | not) | .path' \
+            | while read -r path; do gh workflow disable "$(basename "$path")" --repo "$GITHUB_REPOSITORY" || true; done
+
+  release:
+    needs: sync
+    if: needs.sync.outputs.merged == 'true'
+    uses: ./.github/workflows/personal-release.yml
