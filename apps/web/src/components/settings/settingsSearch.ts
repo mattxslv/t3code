@@ -295,6 +295,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["colors borders interface"],
   },
   {
+    id: "editor-divider-color",
+    title: "Editor divider color",
+    to: "/settings/appearance",
+    searchTerms: ["explorer resize handle separator gray blue purple teal hex"],
+  },
+  {
     // Prefixed because the slider control already owns the `glass-opacity` id.
     id: "setting-glass-opacity",
     title: "Glass opacity",

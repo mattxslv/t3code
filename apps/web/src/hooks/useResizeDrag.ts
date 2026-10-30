@@ -52,6 +52,7 @@ function createResizeDrag<T extends HTMLElement>() {
     if (commit) flush();
     // Release can synchronously dispatch lostpointercapture.
     drag = null;
+    active.target.removeAttribute("data-resizing");
     try {
       if (active.target.hasPointerCapture(active.pointerId)) {
         active.target.releasePointerCapture(active.pointerId);
@@ -106,6 +107,7 @@ function createResizeDrag<T extends HTMLElement>() {
         onBlur,
       };
       document.body.style.cursor = "col-resize";
+      event.currentTarget.setAttribute("data-resizing", "true");
       document.body.style.userSelect = "none";
     },
     onPointerMove(event: PointerEvent<T>) {

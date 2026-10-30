@@ -1003,6 +1003,7 @@ export default function FilePreviewPanel({
   const draft = typeof composerDraftTarget === "string";
   const { resolvedTheme } = useTheme();
   const wordWrap = useClientSettings((settings) => settings.wordWrap);
+  const dividerColor = useClientSettings((settings) => settings.editorDividerColor);
   const canOperatePreview = useEnvironmentScope(environmentId, AuthPreviewOperateScope);
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const remoteOpenState = useRemoteOpenState(environmentId);
@@ -1517,10 +1518,9 @@ export default function FilePreviewPanel({
           <aside
             className={cn(
               "flex min-h-0 shrink-0 bg-background",
-              previewPath
-                ? "w-[min(22rem,46%)] min-w-64 border-l border-border/60"
-                : "min-w-0 flex-1",
+              previewPath ? "w-[min(22rem,46%)] min-w-64 border-l" : "min-w-0 flex-1",
             )}
+            style={previewPath ? { borderColor: dividerColor } : undefined}
           >
             <FileBrowserPanel
               key={`${environmentId}:${hostFolderPath ?? cwd}`}

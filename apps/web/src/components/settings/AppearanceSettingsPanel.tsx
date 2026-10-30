@@ -32,6 +32,73 @@ import { searchableSetting } from "./settingsSearch";
 import { AdvancedSettings } from "./AdvancedSettings";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
 import { TypographySection } from "./TypographySettings";
+import { Input } from "../ui/input";
+
+const DIVIDER_PRESETS = [
+  ["#52525B", "Subtle gray"],
+  ["#A1A1AA", "Bright gray"],
+  ["#3B82F6", "Blue"],
+  ["#A855F7", "Purple"],
+  ["#14B8A6", "Teal"],
+] as const;
+
+function DividerColorControl({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const valid = /^#[0-9a-fA-F]{6}$/.test(draft);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Select
+        value={
+          DIVIDER_PRESETS.some(([color]) => color === value.toUpperCase())
+            ? value.toUpperCase()
+            : "custom"
+        }
+        onValueChange={(color) => {
+          if (color && color !== "custom") onChange(color);
+        }}
+      >
+        <SelectTrigger aria-label="Editor divider preset">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectPopup>
+          {DIVIDER_PRESETS.map(([color, label]) => (
+            <SelectItem key={color} value={color}>
+              {label}
+            </SelectItem>
+          ))}
+          <SelectItem value="custom">Custom HEX</SelectItem>
+        </SelectPopup>
+      </Select>
+      <div className="w-28">
+        <Input
+          aria-label="Editor divider HEX color"
+          aria-invalid={!valid}
+          maxLength={7}
+          value={draft}
+          onChange={(event) => {
+            const next = event.currentTarget.value;
+            setDraft(next);
+            if (/^#[0-9a-fA-F]{6}$/.test(next)) onChange(next.toUpperCase());
+          }}
+          onBlur={() => {
+            if (!valid) setDraft(value);
+          }}
+        />
+      </div>
+      <span
+        aria-hidden
+        className="size-5 rounded border border-border"
+        style={{ backgroundColor: value }}
+      />
+    </div>
+  );
+}
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
   artwork: "Artwork",
@@ -105,6 +172,29 @@ export function AppearanceSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="appearance-interface" title="Interface">
+        <SettingsRow
+          {...searchableSetting("editor-divider-color")}
+          description="Color of the resize divider between the editor and file explorer. Custom colors use #RRGGBB."
+          resetAction={
+            settings.editorDividerColor !== DEFAULT_UNIFIED_SETTINGS.editorDividerColor ? (
+              <SettingResetButton
+                label="editor divider color"
+                onClick={() =>
+                  updateSettings({
+                    editorDividerColor: DEFAULT_UNIFIED_SETTINGS.editorDividerColor,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <DividerColorControl
+              key={settings.editorDividerColor}
+              value={settings.editorDividerColor}
+              onChange={(editorDividerColor) => updateSettings({ editorDividerColor })}
+            />
+          }
+        />
         <SettingsRow
           {...searchableSetting("new-design")}
           description="A true black dark mode, dimmer read threads, and simpler composer controls. Turn it off for the classic look."

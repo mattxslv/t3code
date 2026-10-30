@@ -306,7 +306,12 @@ export type ModelPreferences = {
   readonly providerModelPreferences: typeof ProviderModelPreferences.Type;
 };
 
+export const EditorDividerColor = Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/));
+
 export const ClientSettingsSchema = Schema.Struct({
+  editorDividerColor: EditorDividerColor.pipe(
+    Schema.withDecodingDefault(Effect.succeed("#A1A1AA")),
+  ),
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
   ),
@@ -1607,6 +1612,7 @@ export function requiredScopesForProjectMutation(
 }
 
 export const ClientSettingsPatch = Schema.Struct({
+  editorDividerColor: Schema.optionalKey(EditorDividerColor),
   notificationMode: Schema.optionalKey(NotificationMode),
   inAppNotificationsEnabled: Schema.optionalKey(Schema.Boolean),
   diffColorScheme: Schema.optionalKey(DiffColorScheme),
