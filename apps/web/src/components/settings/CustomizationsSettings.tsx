@@ -29,6 +29,11 @@ const TOGGLES = [
     "Keep horizontal scrolling accessible at the bottom when word wrap is off.",
   ],
   [
+    "composerClassicControls",
+    "Classic composer controls",
+    "Show model, effort, and access as separate menus on the left, with attach and send on the right.",
+  ],
+  [
     "composerUsageEnabled",
     "Composer usage indicator",
     "Show provider allowance in the chat toolbar.",

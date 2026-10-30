@@ -75,12 +75,14 @@ describe("personal customizations", () => {
     const defaults = decodeClientSettings({});
     expect(defaults.customizationsEnabled).toBe(true);
     expect(defaults.composerFileTransferMode).toBe("path");
+    expect(defaults.composerClassicControls).toBe(true);
     const patch = {
       customizationsEnabled: false,
       panelControlsLeft: false,
       composerUsageEnabled: false,
       composerUsageSelectedOnly: false,
       composerUsageDetailed: false,
+      composerClassicControls: false,
       editorDividerCustomColorEnabled: false,
       explorerOnLeft: false,
       fileHorizontalScrollbarEnabled: false,
