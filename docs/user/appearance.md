@@ -23,6 +23,17 @@ of the selected theme.
 
 ## Composer context
 
+On web and desktop, **Workspace layout** switches between navigation on the left and editor on
+the right, or editor on the left and navigation on the right. This fork defaults to editor left.
+Panel widths and open tabs are retained when switching layouts.
+
+**Editor divider color** changes only the resize boundary between the editor and file explorer.
+Choose a preset or enter a six-digit HEX color. These preferences are saved on this device.
+
+The **Codex composer usage account** and **Claude composer usage account** settings select which
+subscription the persistent composer indicators display. Automatic selection works only when
+there is one available account for that provider.
+
 Git-backed projects show branch and worktree controls below the composer while you create a thread.
 The controls retreat as the composer docks after you send the first message.
 

@@ -454,7 +454,6 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         <SidebarBrandWidthProbe onWidthChange={setBrandWidth} />
         <Sidebar
           side={reversed ? "right" : "left"}
-          className={reversed ? "order-last" : undefined}
           collapsible="offcanvas"
           data-app-sidebar=""
           {...sidebarArea}

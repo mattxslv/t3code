@@ -53,6 +53,24 @@ describe("workspace layout preferences", () => {
   });
 });
 
+describe("composer usage account preferences", () => {
+  it("keeps automatic selection for older settings and round-trips separate provider choices", () => {
+    expect(decodeClientSettings({}).composerUsageAccounts).toEqual({});
+    const composerUsageAccounts = {
+      codex: "environment:codex-account",
+      claudeAgent: "environment:claude-account",
+    };
+    const saved = decodeClientSettings({ composerUsageAccounts });
+    expect(decodeClientSettings(encodeClientSettings(saved)).composerUsageAccounts).toEqual(
+      composerUsageAccounts,
+    );
+    expect(decodeClientSettingsPatch({})).not.toHaveProperty("composerUsageAccounts");
+    expect(decodeClientSettingsPatch({ composerUsageAccounts: {} })).toEqual({
+      composerUsageAccounts: {},
+    });
+  });
+});
+
 describe("storage cleanup settings", () => {
   it("keeps cleanup disabled for existing installations", () => {
     expect(decodeServerSettings({}).worktreeCleanup).toBeNull();

@@ -58,6 +58,7 @@ export function FileExplorerPane({
     >
       {resizable ? (
         <RightPanelResizeHandle
+          customAppearance
           handlers={handlers}
           label="Resize file explorer"
           tabIndex={0}

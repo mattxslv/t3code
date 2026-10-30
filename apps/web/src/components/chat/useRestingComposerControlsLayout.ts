@@ -26,8 +26,15 @@ export function useRestingComposerControlsLayout(
     const measurement = measureRestingComposerControls(controls);
     if (!measurement) return;
     const style = getComputedStyle(currentHost);
+    const persistentUsage = currentHost.querySelector<HTMLElement>(
+      ":scope > [data-composer-usage-indicators]",
+    );
+    const persistentWidth = persistentUsage
+      ? persistentUsage.getBoundingClientRect().width + (Number.parseFloat(style.columnGap) || 0)
+      : 0;
     const hostWidth =
       currentHost.clientWidth -
+      persistentWidth -
       (Number.parseFloat(style.paddingInlineStart) || 0) -
       (Number.parseFloat(style.paddingInlineEnd) || 0);
 

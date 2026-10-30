@@ -349,8 +349,13 @@ export type ModelPreferences = {
 
 export const EditorDividerColor = Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/));
 export const WorkspaceLayout = Schema.Literals(["standard", "reversed"]);
+const ComposerUsageAccounts = Schema.Struct({
+  codex: Schema.optionalKey(Schema.String),
+  claudeAgent: Schema.optionalKey(Schema.String),
+});
 
 export const ClientSettingsSchema = Schema.Struct({
+  composerUsageAccounts: ComposerUsageAccounts.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   workspaceLayout: WorkspaceLayout.pipe(
     Schema.withDecodingDefault(Effect.succeed("reversed" as const)),
   ),
@@ -1774,6 +1779,7 @@ export function requiredScopesForProjectMutation(
 }
 
 export const ClientSettingsPatch = Schema.Struct({
+  composerUsageAccounts: Schema.optionalKey(ComposerUsageAccounts),
   workspaceLayout: Schema.optionalKey(WorkspaceLayout),
   editorDividerColor: Schema.optionalKey(EditorDividerColor),
   notificationMode: Schema.optionalKey(NotificationMode),

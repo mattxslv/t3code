@@ -276,6 +276,7 @@ import {
   usePreparingComposerImages,
 } from "./preparingComposerImages";
 import { ComposerControlsBar } from "./ComposerControlsBar";
+import { ComposerUsageIndicators } from "./ComposerUsageIndicators";
 import { composerCommandKeyHandler } from "./composerCommandKey";
 
 function consumePasteAsTextShortcut(deadline: { current: number }): boolean {
@@ -3429,7 +3430,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   showMobilePendingAnswerActions && "hidden sm:flex",
                 )}
               >
-                {composerAttachButton ? <div className="me-2">{composerAttachButton}</div> : null}
                 <div
                   data-chat-composer-actions="right"
                   data-chat-composer-transition-actions="true"
@@ -3446,6 +3446,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   >
                     {composerControls}
                   </div>
+                  <ComposerUsageIndicators />
+                  {composerAttachButton}
                   <ComposerFooterPrimaryActions
                     compact={isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
@@ -3511,7 +3513,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               <div className="h-8">
                 <div
                   ref={setInlineRestingControlsHost}
-                  className="absolute bottom-2 inset-x-4 min-w-0"
+                  className="absolute bottom-2 inset-x-4 flex min-w-0 items-center gap-1"
                 >
                   <div
                     ref={attachRestingComposerControls}
@@ -3519,12 +3521,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     aria-hidden={restingControlsVisible ? undefined : true}
                     inert={restingControlsVisible ? undefined : true}
                     className={cn(
-                      "relative flex w-max min-w-0 max-w-full items-center gap-1 text-muted-foreground/70 [&_button]:text-xs!",
+                      "relative flex min-w-0 flex-1 items-center gap-1 text-muted-foreground/70 [&_button]:text-xs!",
                       !restingControlsVisible && "invisible",
                     )}
                   >
                     {composerControls}
                   </div>
+                  <ComposerUsageIndicators />
                 </div>
               </div>
             ) : null}

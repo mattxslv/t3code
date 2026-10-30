@@ -1,4 +1,5 @@
 import { ChatGptUsageButton } from "../settings/ChatGptUsageButton";
+import { useSearch } from "@tanstack/react-router";
 import { usesChatGptSharing } from "@t3tools/shared/usageLimits";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
@@ -174,7 +175,11 @@ function UsageModelDialogHost({
 }
 
 export function UsagePage() {
-  const [preferences, setPreferences] = useState(readUsagePagePreferences);
+  const search = useSearch({ from: "/_chat/usage" });
+  const [preferences, setPreferences] = useState(() => {
+    const saved = readUsagePagePreferences();
+    return search.metric === "limits" ? { ...saved, metric: "limits" as const } : saved;
+  });
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const hour12 = usePrimarySettings((settings) => resolveHour12(settings.timestampFormat));
   const shortcutTitle = (

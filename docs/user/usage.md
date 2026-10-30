@@ -1,5 +1,15 @@
 # Usage and limits
 
+On web and desktop, the composer keeps Codex and Claude usage indicators visible independently
+of the selected model. The bars show session allowance remaining; narrow composers show provider
+icons instead. Hover or keyboard-focus an indicator for session and weekly allowances, reset
+countdowns, and the last usage update. Click it to open Limits.
+
+Choose accounts in **Settings → Appearance** when more than one account is available. The
+indicators never combine separate accounts. Missing windows show as not reported. Disconnected
+data, updates older than 15 minutes, and windows awaiting a reset update are marked accordingly.
+The indicators use the existing provider refresh cycle and do not poll separately.
+
 Open **Usage** from the sidebar or the command palette, or press `mod+u` on web and
 desktop when the terminal is not focused. Customize `usage.open` in
 **Settings → Keybindings**.
