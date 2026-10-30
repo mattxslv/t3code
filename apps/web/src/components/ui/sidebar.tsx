@@ -503,6 +503,10 @@ function SidebarRail({
       },
     };
   });
+  const resizeSide = sidebarInstance?.side;
+  const cancelResize = resize.cancel;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync, react/exhaustive-effect-dependencies -- side changes cancel a drag captured on the old edge
+  React.useLayoutEffect(() => () => cancelResize(), [cancelResize, resizeSide]);
   // Collapsing mid-drag abandons the drag instead of committing a width to a hidden sidebar.
   // Created once: a new ref callback would run the old one's cleanup, which ends a live drag.
   const [railRef] = React.useState(() => {

@@ -90,6 +90,9 @@ export function useResizableWidth(options: UseResizableWidthOptions): {
   // that carries them rewrites the committed width, so re-apply the live pointer position.
   const { refresh } = drag;
   useLayoutEffect(() => refresh({ min: minWidth, max: maxWidth }), [refresh, minWidth, maxWidth]);
+  const { cancel } = drag;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync, react/exhaustive-effect-dependencies -- edge changes cancel a drag captured on the old edge
+  useLayoutEffect(() => () => cancel(), [cancel, edge]);
 
   return {
     width: clampedWidth,

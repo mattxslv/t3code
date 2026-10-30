@@ -42,6 +42,16 @@ describe("editor divider preferences", () => {
   });
 });
 
+describe("workspace layout preferences", () => {
+  it("defaults to reversed and persists an explicit original layout", () => {
+    expect(decodeClientSettings({}).workspaceLayout).toBe("reversed");
+    const settings = decodeClientSettings({ workspaceLayout: "standard" });
+    expect(decodeClientSettings(encodeClientSettings(settings)).workspaceLayout).toBe("standard");
+    expect(decodeClientSettingsPatch({})).not.toHaveProperty("workspaceLayout");
+    expect(() => decodeClientSettingsPatch({ workspaceLayout: "left" })).toThrow();
+  });
+});
+
 describe("storage cleanup settings", () => {
   it("keeps cleanup disabled for existing installations", () => {
     expect(decodeServerSettings({}).worktreeCleanup).toBeNull();

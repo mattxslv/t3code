@@ -173,6 +173,27 @@ export function AppearanceSettingsPanel() {
 
       <SettingsSection id="appearance-interface" title="Interface">
         <SettingsRow
+          {...searchableSetting("workspace-layout")}
+          description="Choose where the editor and project navigation appear. Chat stays between them."
+          control={
+            <Select
+              value={settings.workspaceLayout}
+              onValueChange={(workspaceLayout) => {
+                if (workspaceLayout === "standard" || workspaceLayout === "reversed")
+                  updateSettings({ workspaceLayout });
+              }}
+            >
+              <SelectTrigger aria-label="Workspace layout">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="reversed">Editor left, navigation right</SelectItem>
+                <SelectItem value="standard">Navigation left, editor right</SelectItem>
+              </SelectPopup>
+            </Select>
+          }
+        />
+        <SettingsRow
           {...searchableSetting("editor-divider-color")}
           description="Color of the resize divider between the editor and file explorer. Custom colors use #RRGGBB."
           resetAction={

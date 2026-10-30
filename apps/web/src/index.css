@@ -2598,3 +2598,38 @@ code {
     }
   }
 }
+
+[data-workspace-layout="reversed"] [data-sidebar-control] {
+  left: auto;
+  right: var(--workspace-controls-right);
+}
+
+[data-workspace-layout="reversed"] [data-workspace-global-controls] {
+  right: calc(
+    var(--workspace-controls-right) + var(--workspace-titlebar-control-size) +
+      var(--workspace-titlebar-control-gap)
+  );
+}
+
+@media (min-width: 768px) {
+  [data-workspace-layout="reversed"][data-sidebar-state="expanded"]
+    [data-workspace-global-controls] {
+    right: calc(var(--sidebar-width) + var(--workspace-controls-right));
+  }
+
+  [data-workspace-layout="reversed"] [data-sidebar-chrome-header] {
+    padding-right: calc(
+      var(--workspace-controls-right) + var(--workspace-titlebar-control-size) +
+        var(--workspace-titlebar-control-gap)
+    );
+  }
+
+  [data-workspace-layout="reversed"] [data-sidebar-brand] {
+    margin-left: 0.75rem;
+  }
+
+  [data-workspace-layout="reversed"] [data-preview-panel-mode="inline"] [data-right-panel-tabbar] {
+    padding-left: var(--workspace-titlebar-content-left);
+    padding-right: 0.75rem;
+  }
+}

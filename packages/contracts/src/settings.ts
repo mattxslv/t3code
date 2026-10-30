@@ -307,8 +307,12 @@ export type ModelPreferences = {
 };
 
 export const EditorDividerColor = Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/));
+export const WorkspaceLayout = Schema.Literals(["standard", "reversed"]);
 
 export const ClientSettingsSchema = Schema.Struct({
+  workspaceLayout: WorkspaceLayout.pipe(
+    Schema.withDecodingDefault(Effect.succeed("reversed" as const)),
+  ),
   editorDividerColor: EditorDividerColor.pipe(
     Schema.withDecodingDefault(Effect.succeed("#A1A1AA")),
   ),
@@ -1612,6 +1616,7 @@ export function requiredScopesForProjectMutation(
 }
 
 export const ClientSettingsPatch = Schema.Struct({
+  workspaceLayout: Schema.optionalKey(WorkspaceLayout),
   editorDividerColor: Schema.optionalKey(EditorDividerColor),
   notificationMode: Schema.optionalKey(NotificationMode),
   inAppNotificationsEnabled: Schema.optionalKey(Schema.Boolean),
