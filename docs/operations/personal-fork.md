@@ -1,13 +1,15 @@
 # Personal fork development
 
-The customized branch is `personal/main`; `main` tracks the official repository.
+The customized branch is `personal/release`, built on the latest official release tag (currently
+`v0.1.3`) so the app matches the released T3 Code. `personal/main` is the older port onto
+unreleased upstream `main`; `main` tracks the official repository.
 
 ## Omarchy laptop
 
 ```sh
 git clone https://github.com/mattxslv/t3code.git
 cd t3code
-git switch personal/main
+git switch personal/release
 git remote add upstream https://github.com/pingdotgg/t3code.git
 ```
 
@@ -49,8 +51,8 @@ the dev server, which uses `.t3/personal-dev` and is separate from both installe
 ## Pull updates
 
 ```sh
-git switch personal/main
-git pull --ff-only origin personal/main
+git switch personal/release
+git pull --ff-only origin personal/release
 ```
 
 Appearance preferences are local to each device. The reversed layout and bright-gray explorer
@@ -64,17 +66,15 @@ attachment action. Local paths require a local agent; remote agents need uploade
 
 ## Integrate official updates
 
-With a clean working tree:
+Follow official releases, not upstream `main`. With a clean working tree, replacing `v0.1.4`
+with the new release tag:
 
 ```sh
-git fetch upstream
-git switch main
-git merge --ff-only upstream/main
-git push origin main
-git switch personal/main
-git merge main
-vp run check:changed main
-git push origin personal/main
+git fetch upstream --tags
+git switch personal/release
+git merge v0.1.4
+vp run check:changed v0.1.4
+git push origin personal/release
 ```
 
 Resolve conflicts and verify on Windows and Linux before pushing the customized branch. The
