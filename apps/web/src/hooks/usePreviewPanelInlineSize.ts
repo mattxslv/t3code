@@ -27,7 +27,9 @@ export function usePreviewPanelInlineSize(
   } = {},
 ): PreviewPanelInlineSize {
   const enabled = options.enabled ?? true;
-  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
+  const reversed = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.workspaceLayout === "reversed",
+  );
   const container = options.container;
   const [maxWidth, setMaxWidth] = useState(() =>
     getPreviewPanelMaxWidth(typeof window === "undefined" ? 1280 : window.innerWidth),

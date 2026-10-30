@@ -67,6 +67,9 @@ export function ChatCanvas({
     if (timelineElement) observed.push(timelineElement);
     return observeResize(observed, measure);
   }, [store, composerOverlayElement, timelineElement, detailsCardTopInset]);
+  const leftPanelControls = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.panelControlsLeft,
+  );
   const detailsCardInlineOpen = useRightPanelStore((state) =>
     threadRef === null
       ? false
@@ -78,7 +81,7 @@ export function ChatCanvas({
     detailsCardMeasurement,
     threadRef,
     preview,
-    detailsCardInlineOpen,
+    detailsCardInlineOpen: !leftPanelControls && detailsCardInlineOpen,
     centerBesideDetails,
   });
   const context = {

@@ -282,6 +282,7 @@ import {
 } from "./preparingComposerImages";
 import { ComposerControlsBar } from "./ComposerControlsBar";
 import { ComposerUsageIndicators } from "./ComposerUsageIndicators";
+import { parseTransferredFilePaths, resolveTransferredFilePaths } from "./composerFilePaths";
 import { composerCommandKeyHandler } from "./composerCommandKey";
 
 function consumePasteAsTextShortcut(deadline: { current: number }): boolean {
@@ -2671,6 +2672,52 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   };
   const insertComposerTextAtEndStable = useStableCallback(insertComposerTextAtEnd);
 
+  const useFilePaths =
+    settings.customizationsEnabled && settings.composerFileTransferMode === "path";
+  const insertLocalFilePaths = (paths: readonly string[], position: "cursor" | "end") => {
+    if (
+      folderDropTarget({
+        localEnvironmentDisabled: isLocalEnvironmentDisabled(),
+        environmentId,
+        primaryEnvironmentId,
+      }) !== "local"
+    ) {
+      toastManager.add({
+        type: "error",
+        title: "File paths require the local environment",
+        description:
+          "The remote agent cannot read files on this PC. Switch to attachments in Personal customizations to upload them.",
+      });
+      return false;
+    }
+    const inserted = insertComposerText(
+      `${paths.map(serializeComposerFileLink).join("\n")} `,
+      position,
+      { ensureLeadingBoundary: true },
+    );
+    if (!inserted)
+      toastManager.add({
+        type: "error",
+        title: "The composer is busy; try again once it is ready.",
+      });
+    else focusComposer();
+    return inserted;
+  };
+  const referenceLocalFiles = (files: File[], position: "cursor" | "end") => {
+    const paths = resolveTransferredFilePaths(files, window.desktopBridge?.getPathForFile);
+    if (!paths || paths.length === 0) {
+      toastManager.add({
+        type: "info",
+        title: "This browser cannot read the original file path",
+        description:
+          "Use Copy as path in File Explorer and paste it, or use the desktop app. No file was uploaded.",
+      });
+      return;
+    }
+    insertLocalFilePaths(paths, position);
+  };
+  const referenceLocalFilesStable = useStableCallback(referenceLocalFiles);
+
   const addComposerFolders = (folders: File[]) => {
     const target = folderDropTarget({
       localEnvironmentDisabled: isLocalEnvironmentDisabled(),
@@ -2713,6 +2760,23 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const onComposerPaste = (event: React.ClipboardEvent<HTMLElement>) => {
     const { files, folders } = splitTransferredFiles(event.clipboardData);
     const plainText = event.clipboardData.getData("text/plain");
+    if (
+      useFilePaths &&
+      (readPastedComposerContext(event.clipboardData)?.records.length ?? 0) === 0
+    ) {
+      const paths = parseTransferredFilePaths(
+        event.clipboardData.getData("text/uri-list") ||
+          event.clipboardData.getData("x-special/gnome-copied-files") ||
+          plainText,
+      );
+      if (paths.length > 0 || files.length > 0 || folders.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (paths.length > 0) insertLocalFilePaths(paths, "cursor");
+        else referenceLocalFilesStable([...files, ...folders], "cursor");
+        return;
+      }
+    }
     const bypassAutoAttachment = consumePasteAsTextShortcut(pasteAsTextShortcutUntilRef);
     if (
       folders.length > 0 ||
@@ -3001,6 +3065,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
       },
       addDroppedFiles: (files: File[]) => {
+        if (useFilePaths) {
+          referenceLocalFilesStable(files, "end");
+          return;
+        }
         void addComposerAttachments(files).then((inserted) => {
           if (!inserted) focusComposer();
         });
@@ -3204,6 +3272,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     [
       activeThread,
       addComposerAttachments,
+      useFilePaths,
+      referenceLocalFilesStable,
       addComposerFoldersStable,
       foldPastedText,
       composerDraftTarget,
@@ -3377,6 +3447,20 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       }}
       onDropCapture={(event) => {
         if (isInsideRestingComposerControlScope(event.target)) return;
+        if (useFilePaths && event.dataTransfer.types.includes("Files")) {
+          const { files, folders } = splitTransferredFiles(event.dataTransfer);
+          const paths = parseTransferredFilePaths(
+            event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain"),
+          );
+          if (files.length > 0 || folders.length > 0 || paths.length > 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragOverComposer(false);
+            if (paths.length > 0) insertLocalFilePaths(paths, "end");
+            else referenceLocalFilesStable([...files, ...folders], "end");
+            return;
+          }
+        }
         composerMentionDragHandlers.onDrop(event);
       }}
       className="mx-auto w-full min-w-0 max-w-(--chat-content-max-width)"
@@ -3773,7 +3857,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   }
                   className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
                 >
-                  <ComposerUsageIndicators />
+                  <ComposerUsageIndicators selectedProvider={selectedProvider} />
                   {composerAttachButton}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}

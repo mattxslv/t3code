@@ -84,6 +84,7 @@ import { BrowserDocumentFrame, isPdfPreviewFile } from "./BrowserDocumentFrame";
 import { DelimitedTablePreview } from "./DelimitedTablePreview";
 import { PreviewImage } from "./PreviewImage";
 import FileBrowserPanel from "./FileBrowserPanel";
+import { FileHorizontalScrollbar } from "./FileHorizontalScrollbar";
 import { FileBreadcrumbs } from "./FileBreadcrumbs";
 import { breadcrumbPathOf, retainedBreadcrumbTrail, trailChildOf } from "./filePath";
 import { FileMarkdownPreview } from "./FileMarkdownPreview";
@@ -852,7 +853,7 @@ function EditableFileSurface({
 
   return (
     <EditProvider createEditor={createFileEditor}>
-      <div ref={surfaceRef} className="flex min-h-0 flex-1">
+      <div ref={surfaceRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Virtualizer
           className="file-preview-virtualizer min-h-0 flex-1 overflow-auto"
           config={{
@@ -899,6 +900,7 @@ function EditableFileSurface({
             className="min-h-full"
           />
         </Virtualizer>
+        <FileHorizontalScrollbar enabled={!wordWrap} />
       </div>
     </EditProvider>
   );
@@ -1003,7 +1005,14 @@ export default function FilePreviewPanel({
   const draft = typeof composerDraftTarget === "string";
   const { resolvedTheme } = useTheme();
   const wordWrap = useClientSettings((settings) => settings.wordWrap);
-  const dividerColor = useClientSettings((settings) => settings.editorDividerColor);
+  const dividerColor = useClientSettings((settings) =>
+    settings.customizationsEnabled && settings.editorDividerCustomColorEnabled
+      ? settings.editorDividerColor
+      : undefined,
+  );
+  const explorerLeft = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.explorerOnLeft,
+  );
   const canOperatePreview = useEnvironmentScope(environmentId, AuthPreviewOperateScope);
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const remoteOpenState = useRemoteOpenState(environmentId);
@@ -1518,9 +1527,16 @@ export default function FilePreviewPanel({
           <aside
             className={cn(
               "flex min-h-0 shrink-0 bg-background",
-              previewPath ? "w-[min(22rem,46%)] min-w-64 border-l" : "min-w-0 flex-1",
+              explorerLeft && "order-first",
+              previewPath
+                ? cn(
+                    "w-[min(22rem,46%)] min-w-64",
+                    explorerLeft ? "border-r" : "border-l",
+                    !dividerColor && "border-border/60",
+                  )
+                : "min-w-0 flex-1",
             )}
-            style={previewPath ? { borderColor: dividerColor } : undefined}
+            style={previewPath && dividerColor ? { borderColor: dividerColor } : undefined}
           >
             <FileBrowserPanel
               key={`${environmentId}:${hostFolderPath ?? cwd}`}

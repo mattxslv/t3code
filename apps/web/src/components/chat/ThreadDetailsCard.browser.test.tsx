@@ -1,10 +1,11 @@
 import { StrictMode } from "react";
 import { EnvironmentId, ThreadId, type ScopedThreadRef } from "@t3tools/contracts";
 import { expect, it } from "vite-plus/test";
-import { page } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 import { act, render } from "../../../test/render";
 import { selectThreadPanelOpen, useRightPanelStore } from "../../rightPanelStore";
-import { PopoverCreateHandle } from "../ui/popover";
+import { PopoverCreateHandle, PopoverTrigger } from "../ui/popover";
+import { getClientSettings, __setClientSettingsForTests } from "../../hooks/useSettings";
 import { ChatCanvasContext } from "./ChatCanvasContext";
 import { resolveChatCanvasLayout } from "./chatCanvasLayout";
 import { ThreadDetailsCard } from "./ThreadDetailsCard";
@@ -20,14 +21,23 @@ const threadB: ScopedThreadRef = {
 const container = { width: 1200, height: 800 };
 const placement = { x: 908, y: 0, right: 12, width: 280, height: 400 } as const;
 
-function setup() {
+function setup(leftPanelControls = false) {
+  const previous = getClientSettings();
+  __setClientSettingsForTests({
+    ...previous,
+    customizationsEnabled: true,
+    panelControlsLeft: leftPanelControls,
+  });
   useRightPanelStore.setState({ threadPanelVisibilityByThreadKey: {} });
   const anchor = document.createElement("div");
   document.body.append(anchor);
   return {
     anchor: { current: anchor },
     handle: PopoverCreateHandle(),
-    [Symbol.dispose]: () => anchor.remove(),
+    [Symbol.dispose]: () => {
+      anchor.remove();
+      __setClientSettingsForTests(previous);
+    },
   };
 }
 
@@ -63,6 +73,7 @@ function Card({
           detailsCardPlacement: inline ? placement : null,
         }}
       >
+        <PopoverTrigger handle={fixture.handle}>Open project details</PopoverTrigger>
         <ThreadDetailsCard threadRef={threadRef} anchor={fixture.anchor} handle={fixture.handle}>
           {() => <p>Details for {threadRef.threadId}</p>}
         </ThreadDetailsCard>
@@ -77,6 +88,17 @@ it("stays open once opened", async () => {
   await act(() => useRightPanelStore.getState().setThreadPanelOpen(threadB, "popover", true));
   await expect.element(page.getByText("Details for thread-b")).toBeVisible();
   expect(popoverOpen(threadB)).toBe(true);
+});
+
+it("opens details from the left toolbar trigger even when the canvas could show an inline card", async () => {
+  using fixture = setup(true);
+  await using screen = await render(<Card threadRef={threadA} inline fixture={fixture} />);
+  expect(screen.container.querySelector('[data-thread-details-panel="inline"]')).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "Open project details" }));
+  await expect.element(page.getByText("Details for thread-a")).toBeVisible();
+  expect(popoverOpen(threadA)).toBe(true);
+  await userEvent.click(screen.getByRole("button", { name: "Open project details" }));
+  await expect.element(page.getByText("Details for thread-a")).not.toBeInTheDocument();
 });
 
 it("closes a popup left open when the card switches inline, and reopens from the flag", async () => {

@@ -379,7 +379,12 @@ function SidebarControl() {
 
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const legacySidebarEnabled = useLegacySidebarEnabled();
-  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
+  const controlsLeft = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.panelControlsLeft,
+  );
+  const reversed = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.workspaceLayout === "reversed",
+  );
   const [sidebarRouteReveal] = useState<SidebarRouteReveal>(() => ({
     observedKey: null,
     pendingKey: null,
@@ -424,6 +429,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       <SidebarProvider
         className="h-dvh! min-h-0!"
         data-workspace-layout={reversed ? "reversed" : "standard"}
+        data-panel-controls-left={controlsLeft ? "true" : "false"}
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}

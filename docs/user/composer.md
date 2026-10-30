@@ -3,6 +3,13 @@
 Give the agent a task in the composer. Add files, quote a previous response, or
 include a skill when the task needs more context.
 
+On this fork, **Settings → Personal customizations → Paste and drop file paths instead of
+attachments** inserts local file references without uploading contents. Native file paths are
+available in the desktop app. In a browser, use **Copy as path** in Windows File Explorer or
+paste a local file URI on Linux. If the original location is hidden, the app explains what to
+do and does not upload the file. The agent must run on the same computer to read that path.
+Turn the option off for regular paste/drop attachments, or use the paperclip to attach explicitly.
+
 Messages can contain up to 120,000 characters. Longer drafts stay in the composer
 so you can shorten them or split them into several messages.
 

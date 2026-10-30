@@ -314,6 +314,21 @@ const ComposerUsageAccounts = Schema.Struct({
 });
 
 export const ClientSettingsSchema = Schema.Struct({
+  customizationsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  panelControlsLeft: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  composerUsageEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  composerUsageSelectedOnly: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  composerUsageDetailed: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  editorDividerCustomColorEnabled: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(Effect.succeed(true)),
+  ),
+  explorerOnLeft: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  fileHorizontalScrollbarEnabled: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(Effect.succeed(true)),
+  ),
+  composerFileTransferMode: Schema.Literals(["path", "attachment"]).pipe(
+    Schema.withDecodingDefault(Effect.succeed("path" as const)),
+  ),
   composerUsageAccounts: ComposerUsageAccounts.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   workspaceLayout: WorkspaceLayout.pipe(
     Schema.withDecodingDefault(Effect.succeed("reversed" as const)),
@@ -1621,6 +1636,15 @@ export function requiredScopesForProjectMutation(
 }
 
 export const ClientSettingsPatch = Schema.Struct({
+  customizationsEnabled: Schema.optionalKey(Schema.Boolean),
+  panelControlsLeft: Schema.optionalKey(Schema.Boolean),
+  composerUsageEnabled: Schema.optionalKey(Schema.Boolean),
+  composerUsageSelectedOnly: Schema.optionalKey(Schema.Boolean),
+  composerUsageDetailed: Schema.optionalKey(Schema.Boolean),
+  editorDividerCustomColorEnabled: Schema.optionalKey(Schema.Boolean),
+  explorerOnLeft: Schema.optionalKey(Schema.Boolean),
+  fileHorizontalScrollbarEnabled: Schema.optionalKey(Schema.Boolean),
+  composerFileTransferMode: Schema.optionalKey(Schema.Literals(["path", "attachment"])),
   composerUsageAccounts: Schema.optionalKey(ComposerUsageAccounts),
   workspaceLayout: Schema.optionalKey(WorkspaceLayout),
   editorDividerColor: Schema.optionalKey(EditorDividerColor),

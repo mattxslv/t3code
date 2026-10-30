@@ -122,6 +122,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --glass-saturation: 1.14;
   --desktop-window-right-resize-inset: 0px;
   --workspace-topbar-height: 52px;
+  --composer-usage-codex: #a1a1aa;
+  --composer-usage-claude: #563328;
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
   --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
@@ -145,6 +147,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
   @variant dark {
     --appearance-contrast-target: white;
+    --composer-usage-codex: #5b5b5b;
     --app-scrollbar-thumb: rgb(255 255 255 / 8%);
     --app-scrollbar-thumb-hover: rgb(255 255 255 / 12%);
     --glass-blur: 16px;
@@ -176,6 +179,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 @theme inline {
+  --color-composer-usage-codex: var(--composer-usage-codex);
+  --color-composer-usage-claude: var(--composer-usage-claude);
   /* Two steps below Tailwind's text-xs (12px) for dense UI: metadata rows,
      badges, counters, keyboard hints and diagnostics tables. 2xs is 11px,
      3xs is 10px. Provider icon overlays use 4xs (8px) and 5xs (7px) to fit
@@ -2364,6 +2369,21 @@ code {
   color: var(--code-foreground) !important;
 }
 
+.file-horizontal-scrollbar {
+  scrollbar-color: var(--muted-foreground) var(--code-background);
+  scrollbar-width: auto;
+}
+
+.file-horizontal-scrollbar::-webkit-scrollbar {
+  height: 12px;
+}
+
+.file-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--muted-foreground);
+  border: 2px solid var(--code-background);
+  border-radius: 6px;
+}
+
 .ultrathink-frame {
   --ultrathink-spectrum: linear-gradient(
     120deg,
@@ -2604,19 +2624,21 @@ code {
   right: var(--workspace-controls-right);
 }
 
-[data-workspace-layout="reversed"] [data-workspace-global-controls] {
-  right: calc(
-    var(--workspace-controls-right) + var(--workspace-titlebar-control-size) +
-      var(--workspace-titlebar-control-gap)
+[data-panel-controls-left="true"] [data-workspace-global-controls] {
+  left: var(--workspace-controls-left);
+  right: auto;
+}
+
+[data-panel-controls-left="true"]:has([data-workspace-global-controls]):not(
+    :has([data-preview-panel-mode="inline"]:not([data-workspace-unavailable="true"]))
+  )
+  [data-chat-header] {
+  padding-left: calc(
+    var(--workspace-controls-left) + 4 * var(--workspace-titlebar-control-size) + 1.5rem
   );
 }
 
 @media (min-width: 768px) {
-  [data-workspace-layout="reversed"][data-sidebar-state="expanded"]
-    [data-workspace-global-controls] {
-    right: calc(var(--sidebar-width) + var(--workspace-controls-right));
-  }
-
   [data-workspace-layout="reversed"] [data-sidebar-chrome-header] {
     padding-right: calc(
       var(--workspace-controls-right) + var(--workspace-titlebar-control-size) +
@@ -2628,8 +2650,34 @@ code {
     margin-left: 0.75rem;
   }
 
-  [data-workspace-layout="reversed"] [data-preview-panel-mode="inline"] [data-right-panel-tabbar] {
-    padding-left: var(--workspace-titlebar-content-left);
+  [data-panel-controls-left="true"][data-workspace-layout="reversed"]
+    [data-preview-panel-mode="inline"]
+    [data-right-panel-tabbar] {
+    padding-left: calc(
+      var(--workspace-controls-left) + 4 * var(--workspace-titlebar-control-size) + 1.5rem
+    );
     padding-right: 0.75rem;
+  }
+}
+
+[data-panel-controls-left="true"][data-workspace-layout="standard"]
+  [data-workspace-global-controls] {
+  left: var(--workspace-titlebar-content-left);
+}
+[data-panel-controls-left="false"][data-workspace-layout="reversed"]
+  [data-workspace-global-controls] {
+  right: calc(
+    var(--workspace-controls-right) + var(--workspace-titlebar-control-size) +
+      var(--workspace-titlebar-control-gap)
+  );
+}
+@media (min-width: 768px) {
+  [data-panel-controls-left="true"][data-workspace-layout="standard"][data-sidebar-state="expanded"]
+    [data-workspace-global-controls] {
+    left: calc(var(--sidebar-width) + var(--workspace-controls-left));
+  }
+  [data-panel-controls-left="false"][data-workspace-layout="reversed"][data-sidebar-state="expanded"]
+    [data-workspace-global-controls] {
+    right: calc(var(--sidebar-width) + var(--workspace-controls-right));
   }
 }

@@ -43,7 +43,9 @@ function PreviewPanelShellFrame(
   props: PreviewPanelShellProps & { inlineSize: PreviewPanelInlineSize },
 ) {
   const isInline = props.mode === "inline";
-  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
+  const reversed = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.workspaceLayout === "reversed",
+  );
   const collapsible = isInline && props.open !== undefined;
   const open = props.open ?? true;
   const maximized = props.maximized ?? false;

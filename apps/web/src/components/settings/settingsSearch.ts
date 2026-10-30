@@ -16,6 +16,7 @@ import { commandLabel } from "./KeybindingsSettings.logic";
 import type { ResolvedSettingsScope } from "./settingsScope";
 
 export type SettingsPath =
+  | "/settings/customizations"
   | "/settings/projects"
   | "/settings/general"
   | "/settings/diagnostics"
@@ -82,6 +83,7 @@ export interface SettingsSearchAvailability {
 }
 
 export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
+  "/settings/customizations": "Personal customizations",
   "/settings/diagnostics": "Diagnostics",
   "/settings/projects": "Projects",
   "/settings/general": "General",
@@ -115,6 +117,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
     paths: [
       "/settings/general",
       "/settings/appearance",
+      "/settings/customizations",
       "/settings/chat",
       "/settings/diffs",
       "/settings/keybindings",
@@ -295,27 +298,81 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["colors borders interface"],
   },
   {
+    id: "customizations-enabled",
+    title: "Enable personal customizations",
+    to: "/settings/customizations",
+    searchTerms: ["fork custom features enable disable master"],
+  },
+  {
+    id: "composer-file-transfer-mode",
+    title: "Paste and drop file paths instead of attachments",
+    to: "/settings/customizations",
+    searchTerms: ["clipboard copy paste drag file location video large upload"],
+  },
+  {
+    id: "custom-panelControlsLeft",
+    title: "Panel controls on the left",
+    to: "/settings/customizations",
+    searchTerms: ["toolbar panel buttons position"],
+  },
+  {
+    id: "custom-explorerOnLeft",
+    title: "File explorer on the left",
+    to: "/settings/customizations",
+    searchTerms: ["file tree editor position"],
+  },
+  {
+    id: "custom-editorDividerCustomColorEnabled",
+    title: "Custom editor divider",
+    to: "/settings/customizations",
+    searchTerms: ["enable disable resize color"],
+  },
+  {
+    id: "custom-fileHorizontalScrollbarEnabled",
+    title: "Bottom file scrollbar",
+    to: "/settings/customizations",
+    searchTerms: ["word wrap horizontal scroll editor"],
+  },
+  {
+    id: "custom-composerUsageEnabled",
+    title: "Composer usage indicator",
+    to: "/settings/customizations",
+    searchTerms: ["enable disable allowance limits quota"],
+  },
+  {
+    id: "custom-composerUsageSelectedOnly",
+    title: "Only show the selected provider",
+    to: "/settings/customizations",
+    searchTerms: ["codex claude both usage model"],
+  },
+  {
+    id: "custom-composerUsageDetailed",
+    title: "Detailed usage bar",
+    to: "/settings/customizations",
+    searchTerms: ["percentage countdown reset gray orange stripes"],
+  },
+  {
     id: "editor-divider-color",
     title: "Editor divider color",
-    to: "/settings/appearance",
+    to: "/settings/customizations",
     searchTerms: ["explorer resize handle separator gray blue purple teal hex"],
   },
   {
     id: "workspace-layout",
     title: "Workspace layout",
-    to: "/settings/appearance",
+    to: "/settings/customizations",
     searchTerms: ["sidebar position left right reversed editor navigation"],
   },
   {
     id: "codex-composer-usage-account",
     title: "Codex composer usage account",
-    to: "/settings/appearance",
+    to: "/settings/customizations",
     searchTerms: ["limits subscription remaining allowance monitor account"],
   },
   {
     id: "claude-composer-usage-account",
     title: "Claude composer usage account",
-    to: "/settings/appearance",
+    to: "/settings/customizations",
     searchTerms: ["limits subscription remaining allowance monitor account"],
   },
   {
@@ -1137,6 +1194,7 @@ export type SettingsSearchItemId = (typeof SETTINGS_SEARCH_ITEMS)[number]["id"];
 const SEARCH_ITEMS_BY_ID = new Map(SETTINGS_SEARCH_ITEMS.map((item) => [item.id, item] as const));
 
 const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScope | null>> = {
+  "/settings/customizations": null,
   "/settings/diagnostics": "environment",
   "/settings/projects": "project",
   "/settings/general": null,
