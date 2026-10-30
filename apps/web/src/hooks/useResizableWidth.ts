@@ -97,6 +97,9 @@ export function useResizableWidth(options: UseResizableWidthOptions): {
   const { refresh } = drag;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- reapplies the live drag pointer position to the DOM before paint when the bounds change
   useLayoutEffect(() => refresh({ min: minWidth, max: maxWidth }), [refresh, minWidth, maxWidth]);
+  const { cancel } = drag;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync, react/exhaustive-effect-dependencies -- edge changes cancel a drag captured on the old edge
+  useLayoutEffect(() => () => cancel(), [cancel, edge]);
 
   return {
     width: clampedWidth,

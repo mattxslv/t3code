@@ -33,11 +33,23 @@ describe("editor divider preferences", () => {
     expect(decodeClientSettings({}).editorDividerColor).toBe("#A1A1AA");
     const settings = decodeClientSettings({ editorDividerColor: "#14b8a6" });
     expect(decodeClientSettings(encodeClientSettings(settings)).editorDividerColor).toBe("#14b8a6");
-    expect(decodeClientSettingsPatch({ editorDividerColor: "#3B82F6" })).toEqual({ editorDividerColor: "#3B82F6" });
+    expect(decodeClientSettingsPatch({ editorDividerColor: "#3B82F6" })).toEqual({
+      editorDividerColor: "#3B82F6",
+    });
     expect(decodeClientSettingsPatch({})).not.toHaveProperty("editorDividerColor");
     for (const editorDividerColor of ["red", "#fff", "#12345678", "var(--primary)", "#GGGGGG"]) {
       expect(() => decodeClientSettingsPatch({ editorDividerColor })).toThrow();
     }
+  });
+});
+
+describe("workspace layout preferences", () => {
+  it("defaults to reversed and persists an explicit original layout", () => {
+    expect(decodeClientSettings({}).workspaceLayout).toBe("reversed");
+    const settings = decodeClientSettings({ workspaceLayout: "standard" });
+    expect(decodeClientSettings(encodeClientSettings(settings)).workspaceLayout).toBe("standard");
+    expect(decodeClientSettingsPatch({})).not.toHaveProperty("workspaceLayout");
+    expect(() => decodeClientSettingsPatch({ workspaceLayout: "left" })).toThrow();
   });
 });
 

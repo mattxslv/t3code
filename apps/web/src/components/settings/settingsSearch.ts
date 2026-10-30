@@ -313,6 +313,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["explorer resize handle separator gray blue purple teal hex"],
   },
   {
+    id: "workspace-layout",
+    title: "Workspace layout",
+    to: "/settings/appearance",
+    searchTerms: ["sidebar position left right reversed editor navigation"],
+  },
+  {
     // Prefixed because the slider control already owns the `glass-opacity` id.
     id: "setting-glass-opacity",
     title: "Glass opacity",

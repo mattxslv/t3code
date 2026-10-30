@@ -9,9 +9,16 @@ interface Props extends Pick<
   handlers: ResizableWidthHandlers;
   className?: string;
   label?: string;
+  edge?: "left" | "right";
 }
 
-export function RightPanelResizeHandle({ handlers, className, label, ...separatorProps }: Props) {
+export function RightPanelResizeHandle({
+  handlers,
+  className,
+  label,
+  edge = "left",
+  ...separatorProps
+}: Props) {
   return (
     <div
       role="separator"
@@ -19,14 +26,15 @@ export function RightPanelResizeHandle({ handlers, className, label, ...separato
       aria-orientation="vertical"
       {...separatorProps}
       className={cn(
-        "group absolute inset-y-0 -left-1 z-20 w-2 cursor-col-resize select-none",
+        "group absolute inset-y-0 z-20 w-2 cursor-col-resize select-none",
+        edge === "left" ? "-left-1" : "-right-1",
         className,
       )}
       {...handlers}
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-(--resize-handle-idle,transparent) transition-colors duration-150 motion-reduce:transition-none group-hover:w-0.5 group-hover:bg-(--resize-handle-hover,var(--border)) group-focus-visible:w-0.5 group-focus-visible:bg-(--resize-handle-active,var(--primary)) group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-ring group-data-[resizing=true]:w-0.5 group-data-[resizing=true]:bg-(--resize-handle-active,var(--primary))"
+        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-(--resize-handle-idle,transparent) transition-colors duration-150 motion-reduce:transition-none group-hover:w-0.5 group-hover:bg-(--resize-handle-hover,var(--border)) group-focus-visible:w-0.5 group-focus-visible:bg-(--resize-handle-active,var(--primary)) group-focus-visible:outline-2 group-focus-visible:-outline-offset-2 group-focus-visible:outline-ring group-data-[resizing=true]:w-0.5 group-data-[resizing=true]:bg-(--resize-handle-active,var(--primary))"
       />
     </div>
   );

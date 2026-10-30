@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { type ResizableWidthHandlers, useResizableWidth } from "./useResizableWidth";
 import { observeResize } from "../lib/observeResize";
+import { useClientSettings } from "./useSettings";
 
 export interface PreviewPanelInlineSize {
   readonly width: number;
@@ -26,6 +27,7 @@ export function usePreviewPanelInlineSize(
   } = {},
 ): PreviewPanelInlineSize {
   const enabled = options.enabled ?? true;
+  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
   const container = options.container;
   const [maxWidth, setMaxWidth] = useState(() =>
     getPreviewPanelMaxWidth(typeof window === "undefined" ? 1280 : window.innerWidth),
@@ -35,7 +37,7 @@ export function usePreviewPanelInlineSize(
     defaultWidth: options.defaultWidth ?? PREVIEW_PANEL_DEFAULT_WIDTH,
     minWidth: PREVIEW_PANEL_MIN_WIDTH,
     maxWidth,
-    edge: "left",
+    edge: reversed ? "right" : "left",
   });
   const observeRow = (host: HTMLElement) => {
     const row = container ?? (enabled ? host.parentElement : null) ?? null;
