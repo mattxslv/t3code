@@ -1,6 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
-import { memo } from "react";
+import { memo, useEffect, useEffectEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { refreshUsageLimits } from "@t3tools/client-runtime/state/usage";
 import {
   remainingPercent,
   formatResetsIn,
@@ -12,6 +13,8 @@ import { useClientSettings } from "../../hooks/useSettings";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { composerUsageAccountsAtom } from "../../state/composerUsage";
 import { environmentPresentations } from "../../state/presentation";
+import { serverEnvironment } from "../../state/server";
+import { useAtomCommand } from "../../state/use-atom-command";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerControl } from "./ComposerControl";
 import {
@@ -104,7 +107,7 @@ function UsageIndicator({
             data-composer-usage-provider={driver}
           >
             <span className={detailed ? "whitespace-nowrap text-xs tabular-nums" : "sr-only"}>
-              {remaining === null ? "Unavailable" : `${remaining}% left`}
+              {remaining === null ? "Unavailable" : `${remaining}%`}
             </span>
             <span
               aria-hidden
@@ -121,11 +124,9 @@ function UsageIndicator({
             >
               {remaining !== null ? (
                 <span
-                  className={
-                    driver === "codex" || !connected || stale
-                      ? "absolute inset-y-0 left-0 rounded-md bg-composer-usage-codex"
-                      : "absolute inset-y-0 left-0 rounded-md bg-composer-usage-claude"
-                  }
+                  className={`absolute inset-y-0 left-0 rounded-md transition-[width,opacity] ${
+                    driver === "codex" ? "bg-composer-usage-codex" : "bg-composer-usage-claude"
+                  } ${!connected || stale ? "opacity-50" : ""}`}
                   style={{ width: `${remaining}%` }}
                 />
               ) : null}
@@ -160,6 +161,39 @@ export const ComposerUsageIndicators = memo(function ComposerUsageIndicators({
     detailed: settings.composerUsageDetailed,
   }));
   const now = Date.parse(`${useNowMinute()}Z`);
+  const presentationsByEnvironment = useAtomValue(environmentPresentations.presentationsAtom);
+  const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
+    reportFailure: false,
+  });
+  // refreshUsageLimits throttles automatic calls to one per environment every few minutes and
+  // shares one in-flight request with the Usage page, so ticking here adds no duplicate requests.
+  const autoRefresh = useEffectEvent(() => {
+    if (!preferences.enabled || document.hidden) return;
+    for (const [environmentId, presentation] of presentationsByEnvironment) {
+      if (presentation.connection.phase === "connected" && presentation.serverConfig !== null) {
+        void refreshUsageLimits(
+          environmentId,
+          () => refreshProviders({ environmentId, input: {} }),
+          true,
+        ).catch(() => undefined);
+      }
+    }
+  });
+  const connectedKey = [...presentationsByEnvironment]
+    .filter(([, p]) => p.connection.phase === "connected" && p.serverConfig !== null)
+    .map(([id]) => id)
+    .join(",");
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps composer usage live by refreshing provider limits on mount, when environments connect, on tab focus, and on a timer
+  useEffect(() => {
+    if (!preferences.enabled || connectedKey === "") return;
+    autoRefresh();
+    const timer = globalThis.setInterval(autoRefresh, 60_000);
+    document.addEventListener("visibilitychange", autoRefresh);
+    return () => {
+      globalThis.clearInterval(timer);
+      document.removeEventListener("visibilitychange", autoRefresh);
+    };
+  }, [preferences.enabled, connectedKey]);
   if (
     !preferences.enabled ||
     (preferences.selectedOnly && selectedProvider !== "codex" && selectedProvider !== "claudeAgent")
