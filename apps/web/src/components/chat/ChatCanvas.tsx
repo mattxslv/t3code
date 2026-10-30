@@ -6,6 +6,7 @@ import { resolveChatCanvasModel, type ChatCanvasStore } from "./canvasStore";
 import { selectThreadPanelOpen, useRightPanelStore } from "../../rightPanelStore";
 import { observeResize } from "../../lib/observeResize";
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import { useClientSettings } from "../../hooks/useSettings";
 
 export function ChatCanvas({
   store,
@@ -67,6 +68,9 @@ export function ChatCanvas({
     if (timelineElement) observed.push(timelineElement);
     return observeResize(observed, measure);
   }, [store, composerOverlayElement, timelineElement, detailsCardTopInset]);
+  const leftPanelControls = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.panelControlsLeft,
+  );
   const detailsCardInlineOpen = useRightPanelStore((state) =>
     threadRef === null
       ? false
@@ -77,7 +81,7 @@ export function ChatCanvas({
     detailsCardMeasurement,
     threadRef,
     preview,
-    detailsCardInlineOpen,
+    detailsCardInlineOpen: !leftPanelControls && detailsCardInlineOpen,
   });
   const context = {
     container: model.container,

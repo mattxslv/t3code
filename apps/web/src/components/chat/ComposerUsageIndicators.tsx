@@ -1,7 +1,12 @@
 import { useAtomValue } from "@effect/atom-react";
 import { memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { remainingPercent, formatResetsIn, type LimitAccount } from "@t3tools/shared/usageLimits";
+import {
+  remainingPercent,
+  formatResetsIn,
+  formatDuration,
+  type LimitAccount,
+} from "@t3tools/shared/usageLimits";
 import { ProviderDriverKind, type ServerProviderUsageWindow } from "@t3tools/contracts";
 import { useClientSettings } from "../../hooks/useSettings";
 import { useNowMinute } from "../../hooks/useNowMinute";
@@ -9,7 +14,6 @@ import { composerUsageAccountsAtom } from "../../state/composerUsage";
 import { environmentPresentations } from "../../state/presentation";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerControl } from "./ComposerControl";
-import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import {
   composerUsageWindow,
   composerUsageStale,
@@ -17,21 +21,33 @@ import {
   type ComposerUsageDriver,
 } from "./composerUsageIndicators.logic";
 
-function WindowDetails({
-  label,
+function WeeklyDetails({
   window,
   now,
 }: {
-  label: string;
   window: ServerProviderUsageWindow | undefined;
   now: number;
 }) {
+  const remaining = window ? remainingPercent(window) : null;
   return (
-    <div>
-      {label}:{" "}
-      {window
-        ? `${remainingPercent(window)}% remaining · ${formatResetsIn(window, now) ?? "Reset not reported"}`
-        : "Not reported"}
+    <div className="w-48 space-y-2 py-1 text-xs">
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="font-medium">Weekly</span>
+        <span className="tabular-nums">
+          {remaining === null ? "Unavailable" : `${remaining}% left`}
+        </span>
+      </div>
+      {remaining !== null ? (
+        <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+          <div
+            className="h-full rounded-full bg-foreground/50"
+            style={{ width: `${remaining}%` }}
+          />
+        </div>
+      ) : null}
+      <div className="text-muted-foreground tabular-nums">
+        {window ? (formatResetsIn(window, now) ?? "Reset not reported") : "Not reported"}
+      </div>
     </div>
   );
 }
@@ -43,6 +59,7 @@ function UsageIndicator({
   connected,
   loading,
   now,
+  detailed,
 }: {
   driver: ComposerUsageDriver;
   account: LimitAccount | undefined;
@@ -50,15 +67,23 @@ function UsageIndicator({
   connected: boolean;
   loading: boolean;
   now: number;
+  detailed: boolean;
 }) {
   const navigate = useNavigate();
   const name = driver === "codex" ? "Codex" : "Claude";
   const session = composerUsageWindow(account, "session");
   const weekly = composerUsageWindow(account, "weekly");
   const remaining = session ? remainingPercent(session) : null;
+  const resetLabel = session ? formatResetsIn(session, now) : null;
+  const resetAt = session?.resetsAt ? Date.parse(session.resetsAt) : NaN;
+  const resetCountdown = Number.isFinite(resetAt)
+    ? resetAt > now
+      ? formatDuration(resetAt - now)
+      : "Updating"
+    : "No reset";
   const stale = account !== undefined && composerUsageStale(account, now);
   const status = ambiguous
-    ? "Select an account in Appearance"
+    ? "Select an account in Personal customizations"
     : loading
       ? "Loading usage"
       : !connected
@@ -74,98 +99,113 @@ function UsageIndicator({
         render={
           <ComposerControl
             size="xs"
-            aria-label={`${name}: ${remaining === null ? "session not reported" : `${remaining}% session remaining`}. ${status}. Open usage limits`}
+            aria-label={`${name}: ${remaining === null ? "session not reported" : `${remaining}% session remaining`}. ${resetLabel ?? "Reset not reported"}. ${status}. Open usage limits`}
             onClick={() => void navigate({ to: "/usage", search: { metric: "limits" } })}
             data-composer-usage-provider={driver}
           >
-            <ProviderInstanceIcon
-              driverKind={ProviderDriverKind.make(driver)}
-              displayName={name}
-              size="compact"
-              showBadge={false}
-            />
+            <span className={detailed ? "whitespace-nowrap text-xs tabular-nums" : "sr-only"}>
+              {remaining === null ? "Unavailable" : `${remaining}% left`}
+            </span>
             <span
               aria-hidden
-              className="hidden w-10 overflow-hidden rounded-full @min-[540px]/composer-surface:block"
+              className={
+                detailed
+                  ? "relative block h-5 w-28 overflow-hidden rounded-md @min-[540px]/composer-surface:w-40"
+                  : "relative block h-1 w-10 overflow-hidden rounded-full bg-muted"
+              }
+              style={{
+                backgroundImage: detailed
+                  ? "repeating-linear-gradient(135deg, transparent 0px, transparent 3px, color-mix(in srgb, var(--foreground) 18%, transparent) 3px, color-mix(in srgb, var(--foreground) 18%, transparent) 4px)"
+                  : undefined,
+              }}
             >
-              {remaining === null ? (
-                <span className="block text-center text-xs text-muted-foreground">?</span>
-              ) : (
-                <span className="block bg-muted">
-                  <span
-                    className="block h-1"
-                    style={{
-                      width: `${remaining}%`,
-                      backgroundColor:
-                        !connected || stale ? "var(--muted-foreground)" : "var(--primary)",
-                    }}
-                  />
+              {remaining !== null ? (
+                <span
+                  className={
+                    driver === "codex" || !connected || stale
+                      ? "absolute inset-y-0 left-0 rounded-md bg-composer-usage-codex"
+                      : "absolute inset-y-0 left-0 rounded-md bg-composer-usage-claude"
+                  }
+                  style={{ width: `${remaining}%` }}
+                />
+              ) : null}
+              {detailed && (remaining !== 100 || Number.isFinite(resetAt)) ? (
+                <span className="absolute inset-y-0 right-0 flex items-center gap-1 border-l border-foreground/50 px-1.5 text-3xs text-foreground tabular-nums">
+                  <span>↻</span> {resetCountdown}
                 </span>
-              )}
+              ) : null}
             </span>
             <span className="sr-only">{name}</span>
           </ComposerControl>
         }
       />
       <TooltipPopup side="top">
-        <div className="space-y-1 text-xs">
-          <div className="font-medium">{name}</div>
-          <WindowDetails label="Session" window={session} now={now} />
-          <WindowDetails label="Weekly" window={weekly} now={now} />
-          <div>
-            Last usage update:{" "}
-            {account ? new Date(account.limits.checkedAt).toLocaleString() : "Unavailable"}
-          </div>
-          <div>{status}</div>
-        </div>
+        <WeeklyDetails window={weekly} now={now} />
       </TooltipPopup>
     </Tooltip>
   );
 }
 
-export const ComposerUsageIndicators = memo(function ComposerUsageIndicators() {
+export const ComposerUsageIndicators = memo(function ComposerUsageIndicators({
+  selectedProvider,
+}: {
+  selectedProvider: ProviderDriverKind;
+}) {
   const accounts = useAtomValue(composerUsageAccountsAtom);
   const presentations = useAtomValue(environmentPresentations.presentationsWithProvidersAtom);
   const selection = useClientSettings((settings) => settings.composerUsageAccounts);
+  const preferences = useClientSettings((settings) => ({
+    enabled: settings.customizationsEnabled && settings.composerUsageEnabled,
+    selectedOnly: settings.composerUsageSelectedOnly,
+    detailed: settings.composerUsageDetailed,
+  }));
   const now = Date.parse(`${useNowMinute()}Z`);
+  if (
+    !preferences.enabled ||
+    (preferences.selectedOnly && selectedProvider !== "codex" && selectedProvider !== "claudeAgent")
+  )
+    return null;
   return (
     <div className="flex shrink-0 items-center gap-0.5" data-composer-usage-indicators>
-      {(["codex", "claudeAgent"] as const).map((driver) => {
-        const selected = selectComposerUsageAccount(accounts, driver, selection[driver]);
-        const environmentIds =
-          selected.account?.environments.map((environment) => environment.environmentId) ?? [];
-        const connected =
-          environmentIds.length > 0
-            ? environmentIds.some((id) => presentations.get(id)?.connection.phase === "connected")
-            : [...presentations.values()].some(
-                (presentation) =>
-                  presentation.connection.phase === "connected" &&
-                  (!selected.account ||
-                    presentation.serverConfig?.usageLimitSources?.some((source) =>
-                      source.accounts.some(
-                        (account) =>
-                          selected.account?.key ===
-                          `${source.id}:${account.id}${account.workspaceId ? `:${account.workspaceId}` : ""}`,
-                      ),
-                    )),
-              );
-        const loading =
-          !selected.account &&
-          [...presentations.values()].some(
-            (presentation) =>
-              presentation.connection.phase === "connected" && presentation.serverConfig === null,
+      {(["codex", "claudeAgent"] as const)
+        .filter((driver) => !preferences.selectedOnly || driver === selectedProvider)
+        .map((driver) => {
+          const selected = selectComposerUsageAccount(accounts, driver, selection[driver]);
+          const environmentIds =
+            selected.account?.environments.map((environment) => environment.environmentId) ?? [];
+          const connected =
+            environmentIds.length > 0
+              ? environmentIds.some((id) => presentations.get(id)?.connection.phase === "connected")
+              : [...presentations.values()].some(
+                  (presentation) =>
+                    presentation.connection.phase === "connected" &&
+                    (!selected.account ||
+                      presentation.serverConfig?.usageLimitSources?.some((source) =>
+                        source.accounts.some(
+                          (account) =>
+                            selected.account?.key ===
+                            `${source.id}:${account.id}${account.workspaceId ? `:${account.workspaceId}` : ""}`,
+                        ),
+                      )),
+                );
+          const loading =
+            !selected.account &&
+            [...presentations.values()].some(
+              (presentation) =>
+                presentation.connection.phase === "connected" && presentation.serverConfig === null,
+            );
+          return (
+            <UsageIndicator
+              key={driver}
+              driver={driver}
+              detailed={preferences.detailed}
+              {...selected}
+              connected={connected}
+              loading={loading}
+              now={now}
+            />
           );
-        return (
-          <UsageIndicator
-            key={driver}
-            driver={driver}
-            {...selected}
-            connected={connected}
-            loading={loading}
-            now={now}
-          />
-        );
-      })}
+        })}
     </div>
   );
 });

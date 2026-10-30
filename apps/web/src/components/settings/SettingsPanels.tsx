@@ -423,6 +423,24 @@ export function useSettingsRestore(onRestored?: () => void) {
   const isBackgroundActivityDirty = hasChangedBackgroundActivitySettings(settings);
 
   const changedSettingLabels = [
+    ...((
+      [
+        "customizationsEnabled",
+        "panelControlsLeft",
+        "composerUsageEnabled",
+        "composerUsageSelectedOnly",
+        "composerUsageDetailed",
+        "editorDividerCustomColorEnabled",
+        "explorerOnLeft",
+        "fileHorizontalScrollbarEnabled",
+        "composerFileTransferMode",
+        "workspaceLayout",
+        "editorDividerColor",
+        "composerUsageAccounts",
+      ] as const
+    ).some((key) => !Equal.equals(settings[key], DEFAULT_UNIFIED_SETTINGS[key]))
+      ? ["Personal customizations"]
+      : []),
     ...(theme !== "system" ? ["Theme"] : []),
     ...(!followSystem ? ["Follow system"] : []),
     ...(themeHalves !== null ? ["Theme mix"] : []),
@@ -607,6 +625,18 @@ export function useSettingsRestore(onRestored?: () => void) {
     }
     updateSettings({
       appearanceContrast: DEFAULT_UNIFIED_SETTINGS.appearanceContrast,
+      customizationsEnabled: DEFAULT_UNIFIED_SETTINGS.customizationsEnabled,
+      panelControlsLeft: DEFAULT_UNIFIED_SETTINGS.panelControlsLeft,
+      composerUsageEnabled: DEFAULT_UNIFIED_SETTINGS.composerUsageEnabled,
+      composerUsageSelectedOnly: DEFAULT_UNIFIED_SETTINGS.composerUsageSelectedOnly,
+      composerUsageDetailed: DEFAULT_UNIFIED_SETTINGS.composerUsageDetailed,
+      editorDividerCustomColorEnabled: DEFAULT_UNIFIED_SETTINGS.editorDividerCustomColorEnabled,
+      explorerOnLeft: DEFAULT_UNIFIED_SETTINGS.explorerOnLeft,
+      fileHorizontalScrollbarEnabled: DEFAULT_UNIFIED_SETTINGS.fileHorizontalScrollbarEnabled,
+      composerFileTransferMode: DEFAULT_UNIFIED_SETTINGS.composerFileTransferMode,
+      workspaceLayout: DEFAULT_UNIFIED_SETTINGS.workspaceLayout,
+      editorDividerColor: DEFAULT_UNIFIED_SETTINGS.editorDividerColor,
+      composerUsageAccounts: DEFAULT_UNIFIED_SETTINGS.composerUsageAccounts,
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
       chatWidth: DEFAULT_UNIFIED_SETTINGS.chatWidth,
       effortDisplay: DEFAULT_UNIFIED_SETTINGS.effortDisplay,

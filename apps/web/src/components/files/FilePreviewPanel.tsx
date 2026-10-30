@@ -85,6 +85,7 @@ import { DelimitedTablePreview } from "./DelimitedTablePreview";
 import { PreviewImage } from "./PreviewImage";
 import FileBrowserPanel from "./FileBrowserPanel";
 import { FileExplorerPane } from "./FileExplorerPane";
+import { FileHorizontalScrollbar } from "./FileHorizontalScrollbar";
 import { FileBreadcrumbs } from "./FileBreadcrumbs";
 import { breadcrumbPathOf, retainedBreadcrumbTrail, trailChildOf } from "./filePath";
 import { FileMarkdownPreview } from "./FileMarkdownPreview";
@@ -851,7 +852,7 @@ function EditableFileSurface({
 
   return (
     <EditProvider createEditor={createFileEditor}>
-      <div ref={surfaceRef} className="flex min-h-0 flex-1">
+      <div ref={surfaceRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Virtualizer
           className="file-preview-virtualizer min-h-0 flex-1 overflow-auto"
           config={{
@@ -898,6 +899,7 @@ function EditableFileSurface({
             className="min-h-full"
           />
         </Virtualizer>
+        <FileHorizontalScrollbar enabled={!wordWrap} />
       </div>
     </EditProvider>
   );

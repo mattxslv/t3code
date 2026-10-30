@@ -71,6 +71,34 @@ describe("composer usage account preferences", () => {
   });
 });
 
+describe("personal customizations", () => {
+  it("retains fork defaults for older installs and round-trips disabled features without clearing preferences", () => {
+    const defaults = decodeClientSettings({});
+    expect(defaults.customizationsEnabled).toBe(true);
+    expect(defaults.composerFileTransferMode).toBe("path");
+    const patch = {
+      customizationsEnabled: false,
+      panelControlsLeft: false,
+      composerUsageEnabled: false,
+      composerUsageSelectedOnly: false,
+      composerUsageDetailed: false,
+      editorDividerCustomColorEnabled: false,
+      explorerOnLeft: false,
+      fileHorizontalScrollbarEnabled: false,
+      composerFileTransferMode: "attachment" as const,
+      workspaceLayout: "reversed" as const,
+      editorDividerColor: "#14B8A6",
+    };
+    const restored = decodeClientSettings(
+      encodeClientSettings(decodeClientSettings({ ...defaults, ...patch })),
+    );
+    expect(restored).toMatchObject(patch);
+    expect(decodeClientSettingsPatch(patch)).toEqual(patch);
+    expect(decodeClientSettingsPatch({})).not.toHaveProperty("customizationsEnabled");
+    expect(() => decodeClientSettingsPatch({ composerFileTransferMode: "upload-path" })).toThrow();
+  });
+});
+
 describe("storage cleanup settings", () => {
   it("keeps cleanup disabled for existing installations", () => {
     expect(decodeServerSettings({}).worktreeCleanup).toBeNull();

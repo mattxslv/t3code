@@ -6,7 +6,7 @@ import { SettingsRow } from "./settingsLayout";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { searchableSetting } from "./settingsSearch";
 
-export function ComposerUsageSettings() {
+export function ComposerUsageSettings({ disabled = false }: { disabled?: boolean }) {
   const accounts = useAtomValue(composerUsageAccountsAtom);
   const selected = useScopedSettings((settings) => settings.composerUsageAccounts);
   const updateSettings = useUpdateScopedSettings();
@@ -26,6 +26,7 @@ export function ComposerUsageSettings() {
             description="Automatic uses the only available account. Multiple accounts require a selection; allowances are never combined."
             control={
               <Select
+                disabled={disabled}
                 value={stored ?? "automatic"}
                 onValueChange={(value) => {
                   if (!value) return;

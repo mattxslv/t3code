@@ -23,7 +23,7 @@ of the selected theme.
 
 ## Composer context
 
-On web and desktop, **Workspace layout** switches between navigation on the left and editor on
+On web and desktop, **Settings → Personal customizations → Workspace layout** switches between navigation on the left and editor on
 the right, or editor on the left and navigation on the right. This fork defaults to editor left.
 Panel widths and open tabs are retained when switching layouts.
 
@@ -33,6 +33,10 @@ Choose a preset or enter a six-digit HEX color. These preferences are saved on t
 The **Codex composer usage account** and **Claude composer usage account** settings select which
 subscription the persistent composer indicators display. Automatic selection works only when
 there is one available account for that provider.
+
+All personal fork options live in **Settings → Personal customizations**. Each feature can be
+disabled separately. The master switch restores upstream behavior while keeping your choices
+for when you turn it back on.
 
 Git-backed projects show branch and worktree controls below the composer while you create a thread.
 The controls retreat as the composer docks after you send the first message.

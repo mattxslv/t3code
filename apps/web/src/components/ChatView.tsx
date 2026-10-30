@@ -1908,7 +1908,10 @@ export default function ChatView(props: ChatViewProps) {
   );
   // Selects only the mode, so canvas resizes rerender the chat view only when the
   // card switches presentation.
-  const threadPanelPresentation = useStore(
+  const leftPanelControls = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.panelControlsLeft,
+  );
+  const canvasThreadPanelPresentation = useStore(
     chatCanvasStore,
     (state) =>
       resolveChatCanvasModel({
@@ -1919,6 +1922,7 @@ export default function ChatView(props: ChatViewProps) {
         detailsCardInlineOpen: threadPanelInlineOpen,
       }).detailsCardMode,
   );
+  const threadPanelPresentation = leftPanelControls ? "popover" : canvasThreadPanelPresentation;
   const threadPanelOpen = useRightPanelStore((state) =>
     selectThreadPanelOpen(
       state.threadPanelVisibilityByThreadKey,
@@ -3167,7 +3171,7 @@ export default function ChatView(props: ChatViewProps) {
   const panelToggleControls = (
     <PanelLayoutControls
       {...panelToggleControlProps}
-      showThreadPanelControl={!inlineRightPanelOwnsTitleBar}
+      showThreadPanelControl={leftPanelControls || !inlineRightPanelOwnsTitleBar}
     />
   );
   const threadPanelHeaderControl = <ThreadPanelHeaderControl {...panelToggleControlProps} />;
@@ -3231,7 +3235,7 @@ export default function ChatView(props: ChatViewProps) {
             />
           ) : null}
           {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
-          {inlineRightPanelOwnsTitleBar ? threadPanelHeaderControl : null}
+          {inlineRightPanelOwnsTitleBar && !leftPanelControls ? threadPanelHeaderControl : null}
           <ChatHeader
             activeThreadEnvironmentId={activeThread.environmentId}
             activeThreadId={activeThread.id}

@@ -48,7 +48,9 @@ function PreviewPanelShellFrame(
 ) {
   const panelArea = workspaceAreaProps("panel", 4, props.workspaceLabel ?? "Workspace panel");
   const isInline = props.mode === "inline";
-  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
+  const reversed = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.workspaceLayout === "reversed",
+  );
   const collapsible = isInline && props.open !== undefined;
   const open = props.open ?? true;
   const maximized = props.maximized ?? false;

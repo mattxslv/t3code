@@ -9,7 +9,9 @@ export function RightPanelSheet(props: {
   open: boolean;
   onClose: () => void;
 }) {
-  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
+  const reversed = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.workspaceLayout === "reversed",
+  );
   return (
     <Sheet
       open={props.open}

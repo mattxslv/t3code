@@ -41,6 +41,7 @@ function PopoverPopup({
   tooltipStyle = false,
   keepMounted = false,
   anchor,
+  matchAnchorWidth = true,
   touchBackdrop = false,
   ...props
 }: PopoverPrimitive.Popup.Props & {
@@ -54,6 +55,7 @@ function PopoverPopup({
   tooltipStyle?: boolean;
   keepMounted?: PopoverPrimitive.Portal.Props["keepMounted"];
   anchor?: PopoverPrimitive.Positioner.Props["anchor"];
+  matchAnchorWidth?: boolean;
   width?: keyof typeof popoverPopupWidthClassName;
   touchBackdrop?: boolean;
 }) {
@@ -77,9 +79,11 @@ function PopoverPopup({
         collisionPadding={variant === "panel" ? 0 : undefined}
         className={cn(
           "h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-transform data-instant:transition-none",
-          variant === "panel"
+          variant === "panel" && matchAnchorWidth
             ? "z-(--z-sheet) w-[min(calc(var(--thread-details-panel-width)+--spacing(4)),calc(var(--anchor-width)---spacing(2)))] transition-[top] duration-150 ease-out data-instant:transition-[top] motion-reduce:transition-none motion-reduce:data-instant:transition-none"
-            : "z-[130]",
+            : variant === "panel"
+              ? "z-(--z-sheet) w-(--thread-details-panel-width) max-w-[calc(100vw-1.5rem)]"
+              : "z-[130]",
         )}
         data-slot="popover-positioner"
         side={side}

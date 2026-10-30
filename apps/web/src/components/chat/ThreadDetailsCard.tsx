@@ -18,6 +18,7 @@ import {
 } from "./threadDetailsCardLayout";
 import { observeResize } from "../../lib/observeResize";
 import { requestWorkspaceFocus } from "../../lib/workspaceFocus";
+import { useClientSettings } from "../../hooks/useSettings";
 
 export function ThreadDetailsCard({
   threadRef,
@@ -37,8 +38,11 @@ export function ThreadDetailsCard({
 }) {
   const detailsArea = workspaceAreaProps("details", 3, "Thread details");
   const canvas = useChatCanvas();
-  const preferredPlacement = canvas?.preferredDetailsCard ?? null;
-  const placement = canvas?.detailsCardPlacement ?? null;
+  const leftPanelControls = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.panelControlsLeft,
+  );
+  const preferredPlacement = leftPanelControls ? null : (canvas?.preferredDetailsCard ?? null);
+  const placement = leftPanelControls ? null : (canvas?.detailsCardPlacement ?? null);
   const mode = placement ? "inline" : "popover";
   const topInset = canvas?.detailsCardTopInset ?? 0;
   const inlineOpen = useRightPanelStore((state) =>
@@ -178,14 +182,15 @@ export function ThreadDetailsCard({
           requestWorkspaceFocus({ area: "details" });
           return false;
         }}
-        anchor={anchor}
-        align="end"
+        {...(leftPanelControls ? {} : { anchor })}
+        align={leftPanelControls ? "start" : "end"}
         // Account for the find panel's 8px card padding.
-        alignOffset={THREAD_DETAILS_CARD_GAP - 8}
+        alignOffset={leftPanelControls ? 0 : THREAD_DETAILS_CARD_GAP - 8}
         collisionAvoidance={{ side: "shift", align: "shift", fallbackAxisSide: "none" }}
         side="bottom"
-        sideOffset={topInset}
+        sideOffset={leftPanelControls ? 8 : topInset}
         variant="panel"
+        matchAnchorWidth={!leftPanelControls}
         padding="none"
       >
         {mode === "popover" ? (

@@ -50,7 +50,9 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
   onToggleThreadPanel,
   onToggleRightPanel,
 }: PanelLayoutControlsProps) {
-  const reversed = useClientSettings((settings) => settings.workspaceLayout === "reversed");
+  const reversed = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.workspaceLayout === "reversed",
+  );
   const threadPanelToggle = (
     <Toggle
       className="relative shrink-0 [-webkit-app-region:no-drag]"
@@ -175,7 +177,7 @@ export function ThreadPanelHeaderControl(props: PanelLayoutControlsProps) {
   );
 }
 
-/** The window's top-right panel controls, with the maximize toggle while the panel is open. */
+/** The window's panel controls, with the maximize toggle while the panel is open. */
 export function WorkspaceTitlebarControls(props: {
   readonly showMaximizeControl: boolean;
   readonly rightPanelOpen: boolean;

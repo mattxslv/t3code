@@ -35,74 +35,6 @@ import { AdvancedSettings } from "./AdvancedSettings";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
 import { TypographySection } from "./TypographySettings";
 import { ThreadDetailsItemsRow } from "./ThreadDetailsItemsRow";
-import { Input } from "../ui/input";
-import { ComposerUsageSettings } from "./ComposerUsageSettings";
-
-const DIVIDER_PRESETS = [
-  ["#52525B", "Subtle gray"],
-  ["#A1A1AA", "Bright gray"],
-  ["#3B82F6", "Blue"],
-  ["#A855F7", "Purple"],
-  ["#14B8A6", "Teal"],
-] as const;
-
-function DividerColorControl({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(value);
-  const valid = /^#[0-9a-fA-F]{6}$/.test(draft);
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Select
-        value={
-          DIVIDER_PRESETS.some(([color]) => color === value.toUpperCase())
-            ? value.toUpperCase()
-            : "custom"
-        }
-        onValueChange={(color) => {
-          if (color && color !== "custom") onChange(color);
-        }}
-      >
-        <SelectTrigger aria-label="Editor divider preset">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectPopup>
-          {DIVIDER_PRESETS.map(([color, label]) => (
-            <SelectItem key={color} value={color}>
-              {label}
-            </SelectItem>
-          ))}
-          <SelectItem value="custom">Custom HEX</SelectItem>
-        </SelectPopup>
-      </Select>
-      <div className="w-28">
-        <Input
-          aria-label="Editor divider HEX color"
-          aria-invalid={!valid}
-          maxLength={7}
-          value={draft}
-          onChange={(event) => {
-            const next = event.currentTarget.value;
-            setDraft(next);
-            if (/^#[0-9a-fA-F]{6}$/.test(next)) onChange(next.toUpperCase());
-          }}
-          onBlur={() => {
-            if (!valid) setDraft(value);
-          }}
-        />
-      </div>
-      <span
-        aria-hidden
-        className="size-5 rounded border border-border"
-        style={{ backgroundColor: value }}
-      />
-    </div>
-  );
-}
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
   artwork: "Artwork",
@@ -216,51 +148,6 @@ export function AppearanceSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="appearance-interface" title="Interface">
-        <ComposerUsageSettings />
-        <SettingsRow
-          {...searchableSetting("workspace-layout")}
-          description="Choose where the editor and project navigation appear. Chat stays between them."
-          control={
-            <Select
-              value={settings.workspaceLayout}
-              onValueChange={(workspaceLayout) => {
-                if (workspaceLayout === "standard" || workspaceLayout === "reversed")
-                  updateSettings({ workspaceLayout });
-              }}
-            >
-              <SelectTrigger aria-label="Workspace layout">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="reversed">Editor left, navigation right</SelectItem>
-                <SelectItem value="standard">Navigation left, editor right</SelectItem>
-              </SelectPopup>
-            </Select>
-          }
-        />
-        <SettingsRow
-          {...searchableSetting("editor-divider-color")}
-          description="Color of the resize divider between the editor and file explorer. Custom colors use #RRGGBB."
-          resetAction={
-            settings.editorDividerColor !== DEFAULT_UNIFIED_SETTINGS.editorDividerColor ? (
-              <SettingResetButton
-                label="editor divider color"
-                onClick={() =>
-                  updateSettings({
-                    editorDividerColor: DEFAULT_UNIFIED_SETTINGS.editorDividerColor,
-                  })
-                }
-              />
-            ) : null
-          }
-          control={
-            <DividerColorControl
-              key={settings.editorDividerColor}
-              value={settings.editorDividerColor}
-              onChange={(editorDividerColor) => updateSettings({ editorDividerColor })}
-            />
-          }
-        />
         <SettingsRow
           {...searchableSetting("setting-appearance-contrast")}
           description="Adjust the contrast of colors and borders across the interface."

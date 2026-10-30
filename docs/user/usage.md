@@ -1,13 +1,15 @@
 # Usage and limits
 
-On web and desktop, the composer keeps Codex and Claude usage indicators visible independently
-of the selected model. The bars show session allowance remaining; narrow composers show provider
-icons instead. Hover or keyboard-focus an indicator for session and weekly allowances, reset
-countdowns, and the last usage update. Click it to open Limits.
+On web and desktop, the composer shows a usage indicator for the selected Codex or Claude model.
+The bar and percentage show session allowance remaining, with the reset countdown inside the bar.
+Codex uses a gray fill and Claude uses dark brown. The striped remainder shows the used allowance.
+Narrow composers use a shorter bar. Hover or keyboard-focus an indicator for weekly remaining
+allowance and its reset countdown. Click it to open Limits.
 
-Choose accounts in **Settings → Appearance** when more than one account is available. The
+Choose accounts in **Settings → Personal customizations** when more than one account is available. The
 indicators never combine separate accounts. Missing windows show as not reported. Disconnected
-data, updates older than 15 minutes, and windows awaiting a reset update are marked accordingly.
+data, updates older than 15 minutes, and windows awaiting a reset update are identified in the
+accessible button label; stale or disconnected bars use gray.
 The indicators use the existing provider refresh cycle and do not poll separately.
 
 Open **Usage** from the sidebar or the command palette, or press `mod+u` on web and

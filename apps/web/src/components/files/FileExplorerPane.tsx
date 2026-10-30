@@ -19,12 +19,18 @@ export function FileExplorerPane({
 }) {
   const [maxWidth, setMaxWidth] = useState(MAX_WIDTH);
   const dividerColor = useClientSettings((settings) => settings.editorDividerColor);
+  const customDivider = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.editorDividerCustomColorEnabled,
+  );
+  const explorerLeft = useClientSettings(
+    (settings) => settings.customizationsEnabled && settings.explorerOnLeft,
+  );
   const { width, setWidth, handlers } = useResizableWidth({
     storageKey: "t3code.fileExplorerWidth",
     defaultWidth: 256,
     minWidth: MIN_WIDTH,
     maxWidth,
-    edge: "left",
+    edge: explorerLeft ? "right" : "left",
   });
 
   return (
@@ -42,7 +48,13 @@ export function FileExplorerPane({
       aria-label="File explorer"
       className={cn(
         "relative flex min-h-0 min-w-0 shrink-0 bg-background",
-        resizable ? "border-l border-(--resize-handle-idle)" : "flex-1",
+        explorerLeft && "order-first",
+        resizable
+          ? cn(
+              explorerLeft ? "border-r" : "border-l",
+              customDivider ? "border-(--resize-handle-idle)" : "border-border/60",
+            )
+          : "flex-1",
       )}
       style={
         resizable
@@ -58,7 +70,8 @@ export function FileExplorerPane({
     >
       {resizable ? (
         <RightPanelResizeHandle
-          customAppearance
+          customAppearance={customDivider}
+          edge={explorerLeft ? "right" : "left"}
           handlers={handlers}
           label="Resize file explorer"
           tabIndex={0}
@@ -70,10 +83,10 @@ export function FileExplorerPane({
             let nextWidth: number;
             switch (event.key) {
               case "ArrowLeft":
-                nextWidth = width + 16;
+                nextWidth = width + (explorerLeft ? -16 : 16);
                 break;
               case "ArrowRight":
-                nextWidth = width - 16;
+                nextWidth = width + (explorerLeft ? 16 : -16);
                 break;
               case "Home":
                 nextWidth = MIN_WIDTH;
