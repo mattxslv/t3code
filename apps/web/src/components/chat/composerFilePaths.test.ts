@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseTransferredFilePaths, resolveTransferredFilePaths } from "./composerFilePaths";
+import {
+  parseTransferredFilePaths,
+  resolveTransferredFilePaths,
+  shouldUploadUnresolvedFiles,
+} from "./composerFilePaths";
 
 describe("composer file paths", () => {
   it("recognizes Windows Copy as path, UNC shares, and Linux URI lists without reading file bytes", () => {
@@ -54,5 +58,14 @@ describe("composer file paths", () => {
     expect(
       resolveTransferredFilePaths([first, second], (file) => `/home/user/${file.name}`),
     ).toEqual(["/home/user/video.mp4", "/home/user/notes.txt"]);
+  });
+
+  it("uploads path-less images such as clipboard screenshots instead of refusing them", () => {
+    const screenshot = new File([], "image.png", { type: "image/png" });
+    const notes = new File([], "notes.txt", { type: "text/plain" });
+    expect(shouldUploadUnresolvedFiles([screenshot])).toBe(true);
+    expect(shouldUploadUnresolvedFiles([screenshot, notes])).toBe(false);
+    expect(shouldUploadUnresolvedFiles([notes])).toBe(false);
+    expect(shouldUploadUnresolvedFiles([])).toBe(false);
   });
 });

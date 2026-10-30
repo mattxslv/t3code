@@ -71,7 +71,8 @@ divider are the fork defaults; choose usage accounts separately on each device.
 Use **Settings → Personal customizations** to enable or disable fork features. File paste and
 drop use path references by default. Full paths from native files require the desktop app;
 in a browser, paste paths copied with **Copy as path** (Windows) or local file URIs (Linux).
-Unknown paths never fall back to uploading file contents. The paperclip remains an explicit
+Images without a file on disk, such as clipboard screenshots, are attached normally; other
+unknown paths never fall back to uploading file contents. The paperclip remains an explicit
 attachment action. Local paths require a local agent; remote agents need uploaded attachments.
 
 ## Integrate official updates

@@ -278,7 +278,11 @@ import {
 import { ComposerControlsBar } from "./ComposerControlsBar";
 import { ComposerUsageIndicators } from "./ComposerUsageIndicators";
 import { useClassicComposerControls } from "./useClassicComposerControls";
-import { parseTransferredFilePaths, resolveTransferredFilePaths } from "./composerFilePaths";
+import {
+  parseTransferredFilePaths,
+  resolveTransferredFilePaths,
+  shouldUploadUnresolvedFiles,
+} from "./composerFilePaths";
 import { composerCommandKeyHandler } from "./composerCommandKey";
 
 function consumePasteAsTextShortcut(deadline: { current: number }): boolean {
@@ -2505,12 +2509,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   };
   const referenceLocalFiles = (files: File[], position: "cursor" | "end") => {
     const paths = resolveTransferredFilePaths(files, window.desktopBridge?.getPathForFile);
+    if ((!paths || paths.length === 0) && shouldUploadUnresolvedFiles(files)) {
+      void addComposerAttachments(files).then((inserted) => {
+        if (!inserted) focusComposer();
+      });
+      return;
+    }
     if (!paths || paths.length === 0) {
       toastManager.add({
         type: "info",
-        title: "This browser cannot read the original file path",
-        description:
-          "Use Copy as path in File Explorer and paste it, or use the desktop app. No file was uploaded.",
+        title: window.desktopBridge
+          ? "This file isn't saved on disk"
+          : "This browser cannot read the original file path",
+        description: window.desktopBridge
+          ? "Save it first, or attach it with the paperclip. No file was uploaded."
+          : "Use Copy as path in File Explorer and paste it, or use the desktop app. No file was uploaded.",
       });
       return;
     }

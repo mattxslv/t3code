@@ -42,3 +42,8 @@ export function resolveTransferredFilePaths(
   }
   return [...new Set(paths)];
 }
+
+// Clipboard screenshots and browser images have no file on disk, so a path reference is impossible.
+export function shouldUploadUnresolvedFiles(files: readonly File[]) {
+  return files.length > 0 && files.every((file) => file.type.startsWith("image/"));
+}

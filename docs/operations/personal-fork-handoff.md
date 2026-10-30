@@ -29,8 +29,9 @@ Updated: 2026-10-30. Repository: https://github.com/mattxslv/t3code. Working bra
 - With word wrap disabled, overflowing source previews have a synchronized bottom horizontal
   scrollbar, including editable and read-only previews.
 - Composer paste/drop defaults to local path references rather than file uploads. Desktop
-  resolves native file paths; browsers require a copied absolute path or file URI. Missing
-  paths produce an explanation rather than silently uploading. Local path insertion is
+  resolves native file paths; browsers require a copied absolute path or file URI. Path-less
+  images (clipboard screenshots) upload as attachments; other files without a path produce an
+  explanation rather than silently uploading. Local path insertion is
   blocked for remote environments. The paperclip still explicitly attaches files.
 
 ## Important files
@@ -80,11 +81,12 @@ changed-source lint, changed-file formatting, and the production web build. The 
 
 - Verify on Omarchy: native Linux file-manager copy/drop, Electron path resolution, narrow
   windows, keyboard resizing, and light-theme contrast of the dark Claude bar.
-- The web browser cannot recover arbitrary local filesystem paths from a `File`; screenshots
-  copied without a backing path need the paperclip or attachment mode.
+- The web browser cannot recover arbitrary local filesystem paths from a `File`; non-image files
+  without a backing path need the paperclip or attachment mode.
 - Latest tooltip/color changes were format/lint checked; no visual browser capture was made.
-- Existing CI/release workflows use upstream infrastructure. No custom updater, signed release,
-  packaged installer, or fork-specific release pipeline has been configured.
+- Releases come from `.github/workflows/personal-release.yml` (unsigned Windows and Linux builds)
+  and update installed apps; see [personal fork development](personal-fork.md). Inherited
+  upstream workflows are disabled.
 - Keep changes focused when merging upstream; the composer footer, composer control triggers
   (`ComposerControlsBar`, `ProviderModelPicker`, `TraitsPicker`, `ComposerFooterControls`),
   canvas, and generated route tree are likely conflict points. No dependency additions were needed.
