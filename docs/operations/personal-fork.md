@@ -83,19 +83,25 @@ which builds Windows and Linux and publishes a release. Installed apps then offe
 `.github/workflows` always keeps this fork's version during the merge; inherited upstream
 workflows stay disabled.
 
-When the merge conflicts or fails type-checking, the workflow hands it to Claude Code, then to
-Codex as a backup, with the instructions in `.github/personal-merge-fix.md`. A fix ships only
-when no conflict markers remain and all three type-checks pass. Each needs a repository secret
-(**Settings → Secrets and variables → Actions**); either can be left out:
+When the merge conflicts or fails type-checking, the workflow hands it to Claude Code with the
+instructions in `.github/personal-merge-fix.md`. A fix ships only when no conflict markers remain
+and all three type-checks pass. Claude signs in with the `CLAUDE_CODE_OAUTH_TOKEN` repository
+secret (**Settings → Secrets and variables → Actions**), a token from `claude setup-token` that
+uses the Claude subscription. The token lasts one year and does not renew itself; replace the
+secret with a new `claude setup-token` before it expires (the current one was created 2026-10-31).
 
-- `CLAUDE_CODE_OAUTH_TOKEN`: from `claude setup-token` (uses the Claude subscription).
-- `OPENAI_API_KEY`: an OpenAI API key for Codex.
+What happens when Claude does not produce a passing fix:
 
-When neither fixes it (often because both are out of usage), nothing is pushed and the run ends
-with a warning; the next run, about five hours later, tries again. Once a release has stayed
-unmerged for two days the run fails instead, and its summary, titled "Update to official vX.Y.Z
+- **Out of usage** (or failed before starting): nothing is pushed and the run ends with a warning;
+  the next run, about five hours later, tries again. After 48 hours it alerts.
+- **Token expired, invalid or missing:** alerts at once.
+- **Claude finished but the checks still fail:** alerts at once, and later runs do not call Claude
+  again for that release. Run **Personal sync** by hand from the Actions tab to retry.
+
+An alert is a failed run (GitHub emails you) whose summary, titled "Update to official vX.Y.Z
 needs attention", lists the conflicting files or type errors (it also opens an issue if issues
-are enabled on the fork). To finish it by hand, replacing `v0.1.6`:
+are enabled on the fork). Each release alerts once; later runs only warn. To finish it by hand,
+replacing `v0.1.6`:
 
 ```sh
 git fetch upstream --tags
