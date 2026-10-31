@@ -33,8 +33,10 @@ jobs:
         with:
           ref: personal/release
           fetch-depth: 0
-          # Claude runs in this checkout; the push step authenticates on its own.
-          persist-credentials: false
+      # Claude runs in this checkout; the push step authenticates on its own. (persist-credentials:
+      # false trips over a stale upstream submodule entry, so the credential is removed here.)
+      - name: Drop checkout credentials
+        run: git config --local --unset-all http.https://github.com/.extraheader || true
       - name: Merge latest official release
         id: merge
         env:
