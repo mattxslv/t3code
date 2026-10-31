@@ -83,8 +83,10 @@ builds Windows and Linux and publishes a release. Installed apps then offer the 
 `.github/workflows` always keeps this fork's version during the merge; inherited upstream
 workflows stay disabled.
 
-When the merge conflicts or fails type-checking, nothing is pushed. Instead the workflow opens an
-issue titled "Update to official vX.Y.Z needs attention". To finish it, replacing `v0.1.6`:
+When the merge conflicts or fails type-checking, nothing is pushed. Instead the **Personal sync**
+run fails, and its summary, titled "Update to official vX.Y.Z needs attention", lists the
+conflicting files or type errors (it also opens an issue if issues are enabled on the fork). To
+finish it, replacing `v0.1.6`:
 
 ```sh
 git fetch upstream --tags

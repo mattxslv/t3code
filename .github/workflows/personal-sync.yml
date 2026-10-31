@@ -81,12 +81,18 @@ jobs:
           else
             body=$(printf 'Official T3 Code `%s` merged cleanly but type-checking failed, so nothing was pushed.\n\n```\n%s\n```' "$latest" "$(tail -60 "$RUNNER_TEMP/check.log")")
           fi
-          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number -q '.[0].number')
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          printf '## %s\n\n%s\n' "$title" "$body" >>"$GITHUB_STEP_SUMMARY"
+          # Issues are disabled on this fork: the run summary carries the details and the failed run is the alert.
+          if [ "$(gh repo view "$GITHUB_REPOSITORY" --json hasIssuesEnabled -q .hasIssuesEnabled)" = true ]; then
+            existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number -q '.[0].number')
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            fi
           fi
+          echo "::error title=$title::See the run summary for details."
+          exit 1
       - name: Keep inherited upstream workflows disabled
         if: always()
         run: |
