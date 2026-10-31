@@ -5,7 +5,7 @@ name: Personal release
 on:
   push:
     branches: [personal/release]
-    paths-ignore: ["docs/**", "**/*.md"]
+    paths-ignore: ["docs/**", "**/*.md", ".github/**"]
   workflow_dispatch:
   workflow_call:
 
