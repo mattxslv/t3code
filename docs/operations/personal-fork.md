@@ -77,16 +77,25 @@ attachment action. Local paths require a local agent; remote agents need uploade
 
 ## Integrate official updates
 
-This is automatic. The **Personal sync** workflow checks for a new official release every six
-hours, merges it into `personal/release`, type-checks it, and starts **Personal release**, which
-builds Windows and Linux and publishes a release. Installed apps then offer the update.
+This is automatic. The **Personal sync** workflow checks for a new official release about every
+five hours, merges it into `personal/release`, type-checks it, and starts **Personal release**,
+which builds Windows and Linux and publishes a release. Installed apps then offer the update.
 `.github/workflows` always keeps this fork's version during the merge; inherited upstream
 workflows stay disabled.
 
-When the merge conflicts or fails type-checking, nothing is pushed. Instead the **Personal sync**
-run fails, and its summary, titled "Update to official vX.Y.Z needs attention", lists the
-conflicting files or type errors (it also opens an issue if issues are enabled on the fork). To
-finish it, replacing `v0.1.6`:
+When the merge conflicts or fails type-checking, the workflow hands it to Claude Code, then to
+Codex as a backup, with the instructions in `.github/personal-merge-fix.md`. A fix ships only
+when no conflict markers remain and all three type-checks pass. Each needs a repository secret
+(**Settings → Secrets and variables → Actions**); either can be left out:
+
+- `CLAUDE_CODE_OAUTH_TOKEN`: from `claude setup-token` (uses the Claude subscription).
+- `OPENAI_API_KEY`: an OpenAI API key for Codex.
+
+When neither fixes it (often because both are out of usage), nothing is pushed and the run ends
+with a warning; the next run, about five hours later, tries again. Once a release has stayed
+unmerged for two days the run fails instead, and its summary, titled "Update to official vX.Y.Z
+needs attention", lists the conflicting files or type errors (it also opens an issue if issues
+are enabled on the fork). To finish it by hand, replacing `v0.1.6`:
 
 ```sh
 git fetch upstream --tags

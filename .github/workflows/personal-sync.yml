@@ -1,10 +1,12 @@
 name: Personal sync
 
 # Merges each new official T3 Code release into personal/release, then builds it.
-# Conflicts or failed checks open an issue instead of pushing.
+# Conflicts or failed checks are handed to Claude, then Codex as a backup. When neither can fix
+# it (for example both are out of usage), nothing is pushed and the next run, about five hours
+# later, tries again. A release still unmerged after two days fails the run to alert the owner.
 on:
   schedule:
-    - cron: "41 */6 * * *"
+    - cron: "41 */5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,6 +25,8 @@ jobs:
       merged: ${{ steps.push.outputs.merged }}
     env:
       GH_TOKEN: ${{ github.token }}
+      HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      HAS_CODEX: ${{ secrets.OPENAI_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,44 +48,138 @@ jobs:
           git merge --no-commit --no-ff "$latest" || true
           # Inherited upstream workflows stay disabled here, and the job token may not push workflow changes.
           git restore --source=HEAD --staged --worktree -- .github/workflows
-          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
-            git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/' >"$RUNNER_TEMP/conflicts.md"
-            git merge --abort
-            echo "problem=conflicts" >>"$GITHUB_ENV"
+          git diff --name-only --diff-filter=U >"$RUNNER_TEMP/conflicted.txt"
+          if [ -s "$RUNNER_TEMP/conflicted.txt" ]; then
+            echo "fix_reason=conflicts" >>"$GITHUB_ENV"
             exit 0
           fi
           git commit --no-edit --quiet
           echo "merged_locally=true" >>"$GITHUB_ENV"
       - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
-        if: env.merged_locally == 'true'
+        if: env.latest != ''
         with:
           node-version-file: package.json
+      - name: Prepare checks
+        if: env.latest != ''
+        run: |
+          # Fails while conflict markers remain or any typecheck fails; the log feeds the fixers and the report.
+          cat >"$RUNNER_TEMP/verify.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -uo pipefail
+          log="$RUNNER_TEMP/check.log"
+          : >"$log"
+          git restore --source=HEAD --staged --worktree -- .github/workflows
+          if [ -s "$RUNNER_TEMP/conflicted.txt" ] &&
+            xargs -a "$RUNNER_TEMP/conflicted.txt" -d '\n' grep -lE '^(<<<<<<<|>>>>>>>)( |$)' -- 2>/dev/null >"$RUNNER_TEMP/unresolved.txt"; then
+            { echo "Conflict markers remain in:"; cat "$RUNNER_TEMP/unresolved.txt"; } | tee -a "$log"
+            exit 1
+          fi
+          vp install 2>&1 | tail -20 | tee -a "$log" || exit 1
+          ok=0
+          for pkg in @t3tools/contracts @t3tools/web @t3tools/desktop; do
+            vp run --filter "$pkg" typecheck 2>&1 | tail -40 | tee -a "$log" || ok=1
+          done
+          exit $ok
+          EOF
+          chmod +x "$RUNNER_TEMP/verify.sh"
       - name: Check merged code
-        id: check
         if: env.merged_locally == 'true'
         run: |
-          set -o pipefail
-          vp install
-          for pkg in @t3tools/contracts @t3tools/web @t3tools/desktop; do
-            vp run --filter "$pkg" typecheck 2>&1 | tail -40 | tee -a "$RUNNER_TEMP/check.log" || echo "problem=checks" >>"$GITHUB_ENV"
-          done
+          "$RUNNER_TEMP/verify.sh" || echo "fix_reason=checks" >>"$GITHUB_ENV"
+      - name: Install dependencies for the fixer
+        if: env.fix_reason != ''
+        run: vp install || true
+
+      - name: Fix with Claude
+        id: claude
+        if: env.fix_reason != '' && env.HAS_CLAUDE == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
+        env:
+          FIX_REASON: ${{ env.fix_reason }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Follow the instructions in .github/personal-merge-fix.md. FIX_REASON is "${{ env.fix_reason }}".
+          claude_args: --allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep" --max-turns 200
+      - name: Check Claude's fix
+        id: verify_claude
+        if: env.fix_reason != '' && steps.claude.outcome == 'success'
+        run: |
+          "$RUNNER_TEMP/verify.sh" && echo "fixed_by=Claude" >>"$GITHUB_ENV" || true
+
+      - name: Fix with Codex
+        id: codex
+        if: env.fix_reason != '' && env.fixed_by == '' && env.HAS_CODEX == 'true'
+        continue-on-error: true
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
+        env:
+          FIX_REASON: ${{ env.fix_reason }}
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/personal-merge-fix.md
+          # The runner is a throwaway VM, and the fix needs network access for `vp install`.
+          sandbox: danger-full-access
+      - name: Check Codex's fix
+        if: env.fix_reason != '' && env.fixed_by == '' && steps.codex.outcome == 'success'
+        run: |
+          "$RUNNER_TEMP/verify.sh" && echo "fixed_by=Codex" >>"$GITHUB_ENV" || true
+
+      - name: Commit fix
+        if: env.fixed_by != ''
+        run: |
+          set -euo pipefail
+          # A lockfile rewritten only by `vp install` on the runner is noise; keep it when the merge touched it.
+          grep -qx pnpm-lock.yaml "$RUNNER_TEMP/conflicted.txt" || git checkout -- pnpm-lock.yaml
+          git add -A
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            git commit --no-edit --quiet
+          elif ! git diff --cached --quiet; then
+            git commit --quiet -m "fix: adapt personal customizations to official $latest"
+          fi
+          {
+            echo "## Official $latest merged by $fixed_by"
+            echo
+            echo "Reason: $fix_reason"
+            if [ "$fix_reason" = conflicts ]; then
+              echo
+              sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/conflicted.txt"
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
       - name: Push merge
-        if: env.merged_locally == 'true' && env.problem == ''
+        id: push
+        if: env.latest != '' && (env.fixed_by != '' || (env.merged_locally == 'true' && env.fix_reason == ''))
         run: |
           git push origin HEAD:personal/release
           echo "merged=true" >>"$GITHUB_OUTPUT"
-        id: push
       - name: Report merge outcome
-        if: env.problem != ''
+        if: env.fix_reason != '' && env.fixed_by == ''
         run: |
           set -euo pipefail
           title="Update to official $latest needs attention"
-          if [ "$problem" = conflicts ]; then
-            body=$(printf 'Merging official T3 Code `%s` into `personal/release` conflicts in:\n\n%s\n\nResolve locally (`git merge %s`), push, and the release builds automatically.' "$latest" "$(cat "$RUNNER_TEMP/conflicts.md")" "$latest")
+          tried=""
+          [ "$HAS_CLAUDE" = true ] && tried="Claude"
+          [ "$HAS_CODEX" = true ] && tried="${tried:+$tried and }Codex"
+          if [ "$fix_reason" = conflicts ]; then
+            details=$(printf 'Merging official T3 Code `%s` into `personal/release` conflicts in:\n\n%s' "$latest" "$(sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/conflicted.txt")")
           else
-            body=$(printf 'Official T3 Code `%s` merged cleanly but type-checking failed, so nothing was pushed.\n\n```\n%s\n```' "$latest" "$(tail -60 "$RUNNER_TEMP/check.log")")
+            details=$(printf 'Official T3 Code `%s` merged cleanly but type-checking failed.' "$latest")
           fi
+          if [ -n "$tried" ]; then
+            attempt="tried $tried without a passing result (often a usage limit)"
+          else
+            attempt="no Claude or Codex token is configured"
+          fi
+          body=$(printf '%s\n\nAutomatic fix: %s. Nothing was pushed; the next run (about five hours) tries again.\n\nTo fix it by hand: `git merge %s`, resolve, push, and the release builds automatically.\n\n```\n%s\n```' \
+            "$details" "$attempt" "$latest" "$(tail -60 "$RUNNER_TEMP/check.log" 2>/dev/null)")
           printf '## %s\n\n%s\n' "$title" "$body" >>"$GITHUB_STEP_SUMMARY"
+          published=$(gh release view "$latest" --repo pingdotgg/t3code --json publishedAt -q .publishedAt)
+          age=$(( $(date +%s) - $(date -d "$published" +%s) ))
+          if [ "$age" -lt $((2 * 24 * 3600)) ]; then
+            echo "::warning title=$title::Not fixed yet; retrying on the next run in about five hours."
+            exit 0
+          fi
           # Issues are disabled on this fork: the run summary carries the details and the failed run is the alert.
           if [ "$(gh repo view "$GITHUB_REPOSITORY" --json hasIssuesEnabled -q .hasIssuesEnabled)" = true ]; then
             existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number -q '.[0].number')
@@ -91,7 +189,7 @@ jobs:
               gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
             fi
           fi
-          echo "::error title=$title::See the run summary for details."
+          echo "::error title=$title::Still unmerged two days after release. See the run summary."
           exit 1
       - name: Keep inherited upstream workflows disabled
         if: always()
