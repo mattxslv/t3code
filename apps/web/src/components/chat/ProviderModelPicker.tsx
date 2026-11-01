@@ -98,6 +98,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   triggerClassName?: string;
   triggerLabel?: string;
   triggerAriaLabel?: string;
+  /** Replaces the provider icon when `triggerLabel` overrides the model name. */
+  triggerIcon?: ReactNode;
   onOpenChange?: (open: boolean) => void;
   onOpenProviderSetup?: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
@@ -371,6 +373,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                   size === "xs" && "shadow-none",
                 )}
               />
+            </span>
+          ) : props.triggerLabel !== undefined && props.triggerIcon ? (
+            <span data-chat-provider-model-picker-icon className="contents">
+              {props.triggerIcon}
             </span>
           ) : null}
           {props.isComposerOwned ? (

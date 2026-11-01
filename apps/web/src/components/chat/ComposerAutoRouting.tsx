@@ -10,16 +10,28 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
 import type { ComposerAutoRouting } from "./useComposerAutoRouting";
 
-/** "Auto · Sonnet 5.5" once a turn was routed, plain "Auto" before. */
-export function autoRoutingTriggerLabel(
+/**
+ * The Auto icon stands in for the provider logo, so the routed model name fits where a manual
+ * pick would; the accessible label still spells out "Auto · Sonnet 5.5".
+ */
+export function autoRoutingTrigger(
   routing: Pick<ComposerAutoRouting, "mode" | "state">,
   modelName: string | null,
-): string | undefined {
+): { readonly text: string; readonly ariaLabel: string } | undefined {
   if (routing.mode !== "auto") return undefined;
   const decided = routing.state?.latestDecision;
-  if (decided?.kind === "dry_run")
-    return modelName === null ? "Auto (dry run)" : `Auto (dry run) · ${modelName}`;
-  return decided == null || modelName === null ? "Auto" : `Auto · ${modelName}`;
+  if (decided?.kind === "dry_run") {
+    return {
+      text: "Auto (dry run)",
+      ariaLabel: modelName === null ? "Auto (dry run)" : `Auto (dry run) · ${modelName}`,
+    };
+  }
+  if (decided == null || modelName === null) return { text: "Auto", ariaLabel: "Auto" };
+  return { text: modelName, ariaLabel: `Auto · ${modelName}` };
+}
+
+export function AutoRoutingTriggerIcon() {
+  return <RouteIcon aria-hidden="true" className="size-4 text-primary" />;
 }
 
 /** The Auto row inside the model picker: turn Auto on or off, see why, rate the choice. */

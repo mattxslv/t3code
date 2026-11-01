@@ -30,7 +30,11 @@ import {
 import type { useComposerProviderModel } from "./useComposerProviderModel";
 import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
 import { useClassicComposerControls } from "./useClassicComposerControls";
-import { AutoRoutingPickerRow, autoRoutingTriggerLabel } from "./ComposerAutoRouting";
+import {
+  AutoRoutingPickerRow,
+  autoRoutingTrigger,
+  AutoRoutingTriggerIcon,
+} from "./ComposerAutoRouting";
 import type { ComposerAutoRouting } from "./useComposerAutoRouting";
 
 /**
@@ -201,7 +205,7 @@ export function ComposerControlsBar(props: {
   const pickerModel = modelOptionsByInstance
     .get(labelInstanceId)
     ?.find((option) => option.slug === labelModel);
-  const autoTriggerLabel = autoRoutingTriggerLabel(
+  const autoTrigger = autoRoutingTrigger(
     autoRouting,
     pickerModel === undefined ? null : (pickerModel.shortName ?? pickerModel.name),
   );
@@ -222,7 +226,13 @@ export function ComposerControlsBar(props: {
       onMultipleModelSelectionsChange={onMultipleModelSelectionsChange}
       selectedModelSelection={selectedModelSelection}
       onProviderModelSelect={selectProviderModel}
-      {...(autoTriggerLabel === undefined ? {} : { triggerLabel: autoTriggerLabel })}
+      {...(autoTrigger === undefined
+        ? {}
+        : {
+            triggerLabel: autoTrigger.text,
+            triggerAriaLabel: autoTrigger.ariaLabel,
+            triggerIcon: <AutoRoutingTriggerIcon />,
+          })}
       activeInstanceId={
         providerCatalogPending
           ? (activeThreadModelSelection?.instanceId ?? selectedInstanceId)
