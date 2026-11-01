@@ -61,6 +61,11 @@ const COMPLEX_SIGNALS: ReadonlyArray<readonly [RegExp, string]> = [
     /\b(?:security|vulnerab|exploit|auth(?:entication|orization) flow|xss|csrf|injection)\b/i,
     "security",
   ],
+  // Reviewing a system for weaknesses is open-ended work, unlike touching a security-related file.
+  [
+    /\b(?:audit|review|check|scan|assess|inspect|look for|find)\w*\b.{0,40}\b(?:security|vulnerab\w*|exploit\w*)|\b(?:security|vulnerab\w*)\s+(?:audit|review|check|scan|assessment)\b/i,
+    "security_review",
+  ],
   [
     /\b(?:performance|optimi[sz]e|latency|memory leak|profil(?:e|ing)|throughput)\b/i,
     "performance",

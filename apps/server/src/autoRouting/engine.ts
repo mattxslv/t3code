@@ -35,6 +35,8 @@ export interface RouteThreadContext {
   readonly previousComplexity: AutoRoutingComplexity | null;
   readonly lastOutcome: RunOutcome;
   readonly escalationsUsed: number;
+  /** The task's model while side questions ran elsewhere; a follow-up returns to it. */
+  readonly resumeSelection?: ModelSelection | null;
 }
 
 export interface RouteInput {
@@ -253,6 +255,16 @@ export function decideRoute(input: RouteInput): RouteDecision {
   if (input.aiClassificationFailed) codes.push("ai_classification_failed");
   if (classification.userReportedFailure) codes.push("user_reported_failure");
   if (input.attachmentCount > 0) codes.push("attachments_present");
+  // A quick unrelated question in the middle of real work: answer it cheaply without letting
+  // it reset the task, so the next follow-up goes back to the task's level.
+  const sideQuestion =
+    thread !== null &&
+    thread.started &&
+    !classification.continuation &&
+    complexity === "trivial" &&
+    classification.signals.includes("question") &&
+    (thread.previousComplexity === "moderate" || thread.previousComplexity === "complex");
+  if (sideQuestion) codes.push("side_question");
 
   const base = {
     profile,
@@ -371,6 +383,8 @@ export function decideRoute(input: RouteInput): RouteDecision {
   }
 
   // A follow-up keeps its model when that model still meets the bar, avoiding needless switches.
+  // It steps down once the model is more than a tier above the need, so a thread never stays on
+  // its strongest model for every acknowledgement after one hard turn.
   let chosen = ranked[0]![0];
   if (
     classification.continuation &&
@@ -378,8 +392,13 @@ export function decideRoute(input: RouteInput): RouteDecision {
     fallbackReason === null &&
     !escalateNow
   ) {
-    const current = eligible.find((entry) => entryMatchesSelection(entry, currentSelection));
-    if (current !== undefined && current.profile.tier >= requiredTier) {
+    const target = thread?.resumeSelection ?? currentSelection;
+    const current = eligible.find((entry) => entryMatchesSelection(entry, target));
+    if (
+      current !== undefined &&
+      current.profile.tier >= requiredTier &&
+      current.profile.tier <= requiredTier + 1
+    ) {
       chosen = current;
       codes.push("continuation_kept_model");
     }
@@ -413,7 +432,12 @@ export function decideRoute(input: RouteInput): RouteDecision {
     codes.push("preferred_model");
   }
 
-  const keepOptions = currentSelection !== null && !escalateNow ? currentSelection : null;
+  // Returning to the task's model also restores its options, such as effort.
+  const resumed =
+    thread?.resumeSelection != null && entryMatchesSelection(chosen, thread.resumeSelection)
+      ? thread.resumeSelection
+      : null;
+  const keepOptions = escalateNow ? null : (resumed ?? currentSelection);
   const selection = selectionFor(chosen, complexity, profile, keepOptions);
   return {
     ...base,

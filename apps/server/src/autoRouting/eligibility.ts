@@ -145,7 +145,8 @@ export function listAutoRoutingModels(input: {
       const exclusion: AutoRoutingExclusion | null = hidden
         ? "hidden"
         : (providerReason ??
-          (model.isLegacy === true
+          // A tier override is an explicit opt-in, e.g. the newest model a Vertex project offers.
+          (model.isLegacy === true && profile.tierSource !== "override"
             ? "legacy_model"
             : model.isCustom && profile.tierSource !== "override"
               ? "custom_model_unknown_capability"

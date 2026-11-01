@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { ProviderInstanceId, RunId } from "@t3tools/contracts";
+import { type AutoRoutingSettings, ProviderInstanceId, RunId } from "@t3tools/contracts";
 
 import { computeEscalationOffer, decideRoute } from "./engine.ts";
 import {
@@ -70,6 +70,15 @@ describe("decideRoute", () => {
     expect(
       metered.candidates.find((candidate) => candidate.model === "claude-opus-5-5")?.excluded,
     ).toBe("Uses metered API billing");
+  });
+
+  it("lets a tier override opt a legacy model into Auto", () => {
+    const terra = (patch: Partial<AutoRoutingSettings>) =>
+      decideRoute(routeInput({ settingsPatch: patch })).candidates.find(
+        (candidate) => candidate.model === "gpt-5.6-terra",
+      );
+    expect(terra({})?.excluded).toBe("Legacy model");
+    expect(terra({ modelTiers: [{ model: "gpt-5.6-terra", tier: 2 }] })?.excluded).toBeNull();
   });
 
   it("trusts an unverified sign-in only when asked, and never as a way around metered billing", () => {
@@ -182,6 +191,54 @@ describe("decideRoute", () => {
     expect(decision.selection).toEqual(current);
     expect(decision.continuation).toBe(true);
     expect(decision.providerSwitched).toBe(false);
+    expect(decision.reasonCodes).toContain("continuation_kept_model");
+  });
+
+  it("steps a follow-up down when the current model is far above what it needs", () => {
+    const opus = selection(CLAUDE, "claude-opus-5-5");
+    const decision = decideRoute(
+      routeInput({
+        text: "ok push it",
+        thread: idleThread({ currentSelection: opus, previousComplexity: "trivial" }),
+      }),
+    );
+    expect(decision.continuation).toBe(true);
+    expect(decision.reasonCodes).not.toContain("continuation_kept_model");
+    expect(decision.selection?.model).not.toBe("claude-opus-5-5");
+    expect(decision.selection?.instanceId).toBe(CLAUDE);
+  });
+
+  it("answers an unrelated quick question cheaply and marks it as a side question", () => {
+    const decision = decideRoute(
+      routeInput({
+        text: "who is the president of the philippines?",
+        providers: [claudeProvider()],
+        thread: idleThread({
+          currentSelection: selection(CLAUDE, "claude-opus-5-5"),
+          previousComplexity: "complex",
+        }),
+      }),
+    );
+    expect(decision.continuation).toBe(false);
+    expect(decision.reasonCodes).toContain("side_question");
+    expect(decision.selection?.model).toBe("claude-haiku-5-5");
+  });
+
+  it("returns to the task's model when a follow-up comes after a side question", () => {
+    const opus = selection(CLAUDE, "claude-opus-5-5");
+    const decision = decideRoute(
+      routeInput({
+        text: "ok continue with the vulnerability check",
+        providers: [claudeProvider()],
+        thread: idleThread({
+          currentSelection: selection(CLAUDE, "claude-haiku-5-5"),
+          previousComplexity: "complex",
+          resumeSelection: opus,
+        }),
+      }),
+    );
+    expect(decision.continuation).toBe(true);
+    expect(decision.selection).toEqual(opus);
     expect(decision.reasonCodes).toContain("continuation_kept_model");
   });
 

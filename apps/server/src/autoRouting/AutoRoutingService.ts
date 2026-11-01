@@ -215,19 +215,33 @@ const make = Effect.gen(function* () {
     return { records, lastRun, outcome };
   });
 
+  /** After a side question, the decision that set the task's level and model. */
+  const taskDecisionBehind = (threadId: ThreadId, previous: AutoRoutingDecision | null) =>
+    previous === null || !previous.reasonCodes.includes("side_question")
+      ? Effect.succeed(null)
+      : store.list({ threadId, limit: 20 }).pipe(
+          Effect.map(
+            (decisions) =>
+              decisions.find((decision) => !decision.reasonCodes.includes("side_question")) ?? null,
+          ),
+          Effect.orElseSucceed(() => null),
+        );
+
   const buildThreadContext = (
     loaded: Effect.Success<ReturnType<typeof loadThreadContext>>,
     previous: AutoRoutingDecision | null,
     threadRecord: AutoRoutingThreadRecord | null,
+    taskDecision: AutoRoutingDecision | null,
   ): RouteThreadContext => ({
     currentSelection: loaded.records.thread.modelSelection,
     started: loaded.records.runs.length > 0,
     supportsHandoff: sessionSupportsHandoff(loaded.records),
     activeWork: hasActiveWork(loaded.records.runs, loaded.records.runtimeRequests),
     priorTurns: loaded.records.runs.filter((run) => run.status !== "queued").length,
-    previousComplexity: previous?.complexity ?? null,
+    previousComplexity: (taskDecision ?? previous)?.complexity ?? null,
     lastOutcome: loaded.outcome,
     escalationsUsed: threadRecord?.escalationsUsed ?? 0,
+    resumeSelection: taskDecision?.selection ?? null,
   });
 
   /** Only for ambiguous requests, only when enabled, and only on an eligible light model. */
@@ -354,7 +368,10 @@ const make = Effect.gen(function* () {
     const updatedAt = decision.createdAt;
     const current = (yield* store.getThread(threadId)) ?? emptyThreadRecord(threadId, updatedAt);
     const newTask =
-      decision.kind !== "pinned" && decision.kind !== "kept_active" && !decision.continuation;
+      decision.kind !== "pinned" &&
+      decision.kind !== "kept_active" &&
+      !decision.continuation &&
+      !decision.reasonCodes.includes("side_question");
     const escalated = decision.reasonCodes.includes("escalation_automatic") ? 1 : 0;
     yield* store.putThread({
       ...current,
@@ -406,8 +423,12 @@ const make = Effect.gen(function* () {
     const previous = existingThreadId === null ? null : yield* latestDecision(existingThreadId);
     const threadRecord =
       existingThreadId === null ? null : yield* store.getThread(existingThreadId);
+    const taskDecision =
+      existingThreadId === null ? null : yield* taskDecisionBehind(existingThreadId, previous);
     const threadContext =
-      threadLoad === null ? null : buildThreadContext(threadLoad, previous, threadRecord);
+      threadLoad === null
+        ? null
+        : buildThreadContext(threadLoad, previous, threadRecord, taskDecision);
 
     // Pins and a disabled feature never change the model; they are recorded so history stays honest.
     if (input.mode === "pinned" || !settings.autoRouting.enabled) {
@@ -725,13 +746,14 @@ const make = Effect.gen(function* () {
       const threadId = loaded === null ? null : (input.threadId ?? null);
       const record = threadId === null ? null : yield* store.getThread(threadId);
       const previous = threadId === null ? null : yield* latestDecision(threadId);
+      const taskDecision = threadId === null ? null : yield* taskDecisionBehind(threadId, previous);
       const projectId = loaded?.records.thread.projectId ?? input.projectId ?? null;
       const routed = yield* route({
         settings,
         projectId,
         text: input.text,
         attachmentCount: 0,
-        thread: loaded === null ? null : buildThreadContext(loaded, previous, record),
+        thread: loaded === null ? null : buildThreadContext(loaded, previous, record, taskDecision),
         requestedSelection: loaded?.records.thread.modelSelection ?? settings.defaultModelSelection,
         ...(input.profile === undefined ? {} : { profileOverride: input.profile }),
         allowAi: settings.autoRouting.aiClassification || input.allowAiClassification === true,

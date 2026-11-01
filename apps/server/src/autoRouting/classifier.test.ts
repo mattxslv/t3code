@@ -30,6 +30,7 @@ describe("classifyTask", () => {
     ["Implement a debounce hook and use it in the search input component", "moderate"],
     ["Fix the error in src/app.ts and then add a test for it", "moderate"],
     ["Redesign the architecture to support concurrency without a race condition", "complex"],
+    ["check this system for security vulnerabilities", "complex"],
     [
       "Refactor the authentication flow across the entire codebase to use the new session service, migrate the stored tokens, and make sure there are no race conditions on refresh.",
       "complex",

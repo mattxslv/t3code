@@ -155,6 +155,37 @@ describe("AutoRoutingService.resolveDispatch", () => {
     }).pipe(Effect.provide(makeLayer({ fixture: thread })));
   });
 
+  it.effect("answers a side question cheaply, then returns to the task's model", () => {
+    const thread = fixture();
+    return Effect.gen(function* () {
+      const routing = yield* AutoRoutingService;
+      const send = (index: number, text: string) =>
+        routing
+          .resolveDispatch(
+            dispatchCommand({
+              commandId: CommandId.make(`command-${index}`),
+              messageId: MessageId.make(`message-${index}`),
+              text,
+            }),
+          )
+          .pipe(
+            Effect.tap((resolved) =>
+              Effect.sync(() => {
+                // The thread now runs on whatever Auto chose.
+                thread.modelSelection = resolved.modelSelection!;
+                thread.runs.push(run(`run-${index + 1}`, "completed", resolved.modelSelection!));
+              }),
+            ),
+            Effect.map((resolved) => resolved.modelSelection?.model),
+          );
+      expect(yield* send(1, "check this system for security vulnerabilities")).toBe(
+        "claude-opus-5-5",
+      );
+      expect(yield* send(2, "who is the president of the philippines?")).toBe("claude-haiku-5-5");
+      expect(yield* send(3, "ok continue with the vulnerability check")).toBe("claude-opus-5-5");
+    }).pipe(Effect.provide(makeLayer({ fixture: thread, providers: [claudeProvider()] })));
+  });
+
   it.effect("never overrides a pinned model", () => {
     const thread = fixture();
     return Effect.gen(function* () {
