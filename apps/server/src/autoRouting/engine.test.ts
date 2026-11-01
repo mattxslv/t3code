@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { RunId } from "@t3tools/contracts";
+import { ProviderInstanceId, RunId } from "@t3tools/contracts";
 
 import { computeEscalationOffer, decideRoute } from "./engine.ts";
 import {
@@ -75,6 +75,14 @@ describe("decideRoute", () => {
   it("trusts an unverified sign-in only when asked, and never as a way around metered billing", () => {
     const providers = [
       claudeProvider({ auth: { status: "authenticated" } }),
+      claudeProvider({
+        instanceId: ProviderInstanceId.make("claudeWork"),
+        auth: { status: "authenticated", type: "vertex" },
+      }),
+      claudeProvider({
+        instanceId: ProviderInstanceId.make("claudeProxy"),
+        auth: { status: "authenticated", type: "customEndpoint" },
+      }),
       codexProvider({ auth: { status: "authenticated", type: "apiKey" } }),
     ];
     expect(decideRoute(routeInput({ providers })).kind).toBe("manual_fallback");
@@ -82,9 +90,17 @@ describe("decideRoute", () => {
       routeInput({ providers, settingsPatch: { allowUnverifiedAuth: true } }),
     );
     expect(trusted.selection?.instanceId).toBe(CLAUDE);
-    expect(
-      trusted.candidates.find((candidate) => candidate.model === "gpt-6.1-sol")?.excluded,
-    ).toBe("Uses metered API billing");
+    for (const [instanceId, model] of [
+      ["claudeWork", "claude-opus-5-5"],
+      ["claudeProxy", "claude-opus-5-5"],
+      ["codex", "gpt-6.1-sol"],
+    ]) {
+      expect(
+        trusted.candidates.find(
+          (candidate) => candidate.instanceId === instanceId && candidate.model === model,
+        )?.excluded,
+      ).toBe("Uses metered API billing");
+    }
   });
 
   it("allows metered instances only when explicitly enabled", () => {

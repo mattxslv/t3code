@@ -23,6 +23,7 @@ const METERED_AUTH_TYPES: ReadonlySet<string> = new Set([
   "googlevertex",
   "foundry",
   "azure",
+  "customendpoint",
 ]);
 
 export type AutoRoutingExclusion =

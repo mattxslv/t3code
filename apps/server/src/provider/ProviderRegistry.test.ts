@@ -2569,6 +2569,31 @@ it.layer(
     );
 
     it.effect.each([
+      { apiProvider: "bedrock", type: "bedrock", label: "Amazon Bedrock" },
+      { apiProvider: "vertex", type: "vertex", label: "Google Vertex AI" },
+      { apiProvider: "foundry", type: "foundry", label: "Microsoft Foundry" },
+    ])("labels cloud-billed Claude backends: $apiProvider", ({ apiProvider, type, label }) =>
+      Effect.gen(function* () {
+        const status = yield* checkClaudeProviderStatus(
+          defaultClaudeSettings,
+          claudeCapabilities({ tokenSource: "none", apiKeySource: "none", apiProvider }),
+          { ANTHROPIC_BASE_URL: "" },
+        );
+        assert.strictEqual(status.auth.status, "authenticated");
+        assert.strictEqual(status.auth.type, type);
+        assert.strictEqual(status.auth.label, label);
+      }).pipe(
+        Effect.provide(
+          layerMockSpawner((args) => {
+            const joined = args.join(" ");
+            if (joined === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };
+            throw new Error(`Unexpected args: ${joined}`);
+          }),
+        ),
+      ),
+    );
+
+    it.effect.each([
       {
         settings: { env: { ANTHROPIC_BASE_URL: "https://hub.example.ts.net:8317" } },
         baseUrl: "https://api.anthropic.com",

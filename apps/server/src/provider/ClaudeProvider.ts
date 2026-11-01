@@ -163,7 +163,16 @@ function claudeAuthMetadata(input: {
 function apiProviderAuthMetadata(
   apiProvider: string | undefined,
 ): { readonly type: string; readonly label: string } | undefined {
-  return apiProvider === "bedrock" ? { type: "bedrock", label: "Amazon Bedrock" } : undefined;
+  switch (apiProvider) {
+    case "bedrock":
+      return { type: "bedrock", label: "Amazon Bedrock" };
+    case "vertex":
+      return { type: "vertex", label: "Google Vertex AI" };
+    case "foundry":
+      return { type: "foundry", label: "Microsoft Foundry" };
+    default:
+      return undefined;
+  }
 }
 
 /** Probe completion only proves Claude started. Only tokenSource: "none" disproves auth. */

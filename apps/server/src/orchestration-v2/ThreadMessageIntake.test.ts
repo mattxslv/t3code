@@ -460,12 +460,14 @@ it.effect("routes Auto turns before dispatch, and sends the manual model without
 
     const withService: OrchestrationV2ServerCommand[] = [];
     yield* dispatchCommand(send).pipe(
-      Effect.provide(layerFailingDispatch(withService)),
       Effect.provide(
-        Layer.mock(AutoRouting.AutoRoutingService)({
-          resolveDispatch: ({ autoRouting: _autoRouting, ...command }) =>
-            Effect.succeed({ ...command, modelSelection: routedSelection }),
-        }),
+        Layer.mergeAll(
+          layerFailingDispatch(withService),
+          Layer.mock(AutoRouting.AutoRoutingService)({
+            resolveDispatch: ({ autoRouting: _autoRouting, ...command }) =>
+              Effect.succeed({ ...command, modelSelection: routedSelection }),
+          }),
+        ),
       ),
       Effect.result,
     );
