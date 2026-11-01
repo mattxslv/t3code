@@ -10,6 +10,7 @@ import {
   EventId,
   GuestMessageId,
   MessageId,
+  ProviderInstanceId,
   RuntimeRequestId,
   ThreadId,
   TurnItemId,
@@ -26,6 +27,7 @@ import {
   createPendingAttachmentId,
   resolveAttachmentPath,
 } from "../attachmentStore.ts";
+import * as AutoRouting from "../autoRouting/AutoRoutingService.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import {
@@ -424,5 +426,49 @@ it.effect("sends a guest message with the guest's files, never ones the client n
     expect(command.attachments).toHaveLength(1);
     // The guest's file, which is already the thread's.
     expect(command.attachments).toEqual([guestFile]);
+  }).pipe(Effect.provide(layerIntakeTest)),
+);
+
+it.effect("routes Auto turns before dispatch, and sends the manual model without the service", () =>
+  Effect.gen(function* () {
+    const manualSelection = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6-luna" };
+    const routedSelection = {
+      instanceId: ProviderInstanceId.make("claudeAgent"),
+      model: "claude-opus-5-5",
+    };
+    const send = {
+      type: "message.dispatch" as const,
+      commandId: CommandId.make("send-auto"),
+      threadId: ThreadId.make("thread-auto"),
+      messageId: MessageId.make("message-auto"),
+      text: "Refactor the auth flow",
+      attachments: [],
+      modelSelection: manualSelection,
+      autoRouting: { mode: "auto" as const },
+      dispatchMode: { type: "start_immediately" as const },
+      createdBy: "user" as const,
+      creationSource: "web" as const,
+    };
+
+    const withoutService: OrchestrationV2ServerCommand[] = [];
+    yield* dispatchCommand(send).pipe(
+      Effect.provide(layerFailingDispatch(withoutService)),
+      Effect.result,
+    );
+    expect(withoutService[0]).toMatchObject({ modelSelection: manualSelection });
+    expect(withoutService[0]).not.toHaveProperty("autoRouting");
+
+    const withService: OrchestrationV2ServerCommand[] = [];
+    yield* dispatchCommand(send).pipe(
+      Effect.provide(layerFailingDispatch(withService)),
+      Effect.provide(
+        Layer.mock(AutoRouting.AutoRoutingService)({
+          resolveDispatch: ({ autoRouting: _autoRouting, ...command }) =>
+            Effect.succeed({ ...command, modelSelection: routedSelection }),
+        }),
+      ),
+      Effect.result,
+    );
+    expect(withService[0]).toMatchObject({ modelSelection: routedSelection });
   }).pipe(Effect.provide(layerIntakeTest)),
 );

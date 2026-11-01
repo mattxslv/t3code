@@ -33,6 +33,19 @@ import {
   ChatGptHandoffInput,
   ChatGptHandoffState,
 } from "./providerSetup.ts";
+import {
+  AutoRoutingDecision,
+  AutoRoutingDiagnostics,
+  AutoRoutingDiagnosticsInput,
+  AutoRoutingError,
+  AutoRoutingGetThreadStateInput,
+  AutoRoutingHistory,
+  AutoRoutingListHistoryInput,
+  AutoRoutingRespondEscalationInput,
+  AutoRoutingSimulateInput,
+  AutoRoutingSubmitFeedbackInput,
+  AutoRoutingThreadState,
+} from "./autoRouting.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -536,6 +549,13 @@ export const WS_METHODS = {
   serverReportClientActivity: "server.reportClientActivity",
   serverGetUsageSummary: "server.getUsageSummary",
   serverRefreshUsageRates: "server.refreshUsageRates",
+  autoRoutingGetThreadState: "autoRouting.getThreadState",
+  autoRoutingListHistory: "autoRouting.listHistory",
+  autoRoutingSimulate: "autoRouting.simulate",
+  autoRoutingGetDiagnostics: "autoRouting.getDiagnostics",
+  autoRoutingRespondEscalation: "autoRouting.respondEscalation",
+  autoRoutingSubmitFeedback: "autoRouting.submitFeedback",
+  autoRoutingClearHistory: "autoRouting.clearHistory",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
@@ -966,6 +986,40 @@ const WsServerRefreshUsageRatesRpc = Rpc.make(WS_METHODS.serverRefreshUsageRates
   payload: Schema.Struct({}),
   success: UsagePricing,
   error: EnvironmentAuthorizationError,
+});
+
+const WsAutoRoutingGetThreadStateRpc = Rpc.make(WS_METHODS.autoRoutingGetThreadState, {
+  payload: AutoRoutingGetThreadStateInput,
+  success: AutoRoutingThreadState,
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
+});
+const WsAutoRoutingListHistoryRpc = Rpc.make(WS_METHODS.autoRoutingListHistory, {
+  payload: AutoRoutingListHistoryInput,
+  success: AutoRoutingHistory,
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
+});
+const WsAutoRoutingSimulateRpc = Rpc.make(WS_METHODS.autoRoutingSimulate, {
+  payload: AutoRoutingSimulateInput,
+  success: AutoRoutingDecision,
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
+});
+const WsAutoRoutingGetDiagnosticsRpc = Rpc.make(WS_METHODS.autoRoutingGetDiagnostics, {
+  payload: AutoRoutingDiagnosticsInput,
+  success: AutoRoutingDiagnostics,
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
+});
+const WsAutoRoutingRespondEscalationRpc = Rpc.make(WS_METHODS.autoRoutingRespondEscalation, {
+  payload: AutoRoutingRespondEscalationInput,
+  success: AutoRoutingThreadState,
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
+});
+const WsAutoRoutingSubmitFeedbackRpc = Rpc.make(WS_METHODS.autoRoutingSubmitFeedback, {
+  payload: AutoRoutingSubmitFeedbackInput,
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
+});
+const WsAutoRoutingClearHistoryRpc = Rpc.make(WS_METHODS.autoRoutingClearHistory, {
+  payload: Schema.Struct({}),
+  error: Schema.Union([EnvironmentAuthorizationError, AutoRoutingError]),
 });
 
 const WsServerSignalProcessRpc = Rpc.make(WS_METHODS.serverSignalProcess, {
@@ -2025,6 +2079,13 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerPrepareTriageRpc,
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
+  WsAutoRoutingGetThreadStateRpc,
+  WsAutoRoutingListHistoryRpc,
+  WsAutoRoutingSimulateRpc,
+  WsAutoRoutingGetDiagnosticsRpc,
+  WsAutoRoutingRespondEscalationRpc,
+  WsAutoRoutingSubmitFeedbackRpc,
+  WsAutoRoutingClearHistoryRpc,
   WsServerSignalProcessRpc,
   WsScheduledTasksSubscribeRpc,
   WsScheduledTasksUpsertRpc,

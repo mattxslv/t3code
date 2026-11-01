@@ -203,6 +203,8 @@ import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
+import { useAutoRoutingEscalationItem } from "./ComposerAutoRouting";
+import { useComposerAutoRouting } from "./useComposerAutoRouting";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
 import { getComposerPromptInjectionState, getComposerReasoningStep } from "./composerProviderState";
@@ -608,6 +610,25 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
   } = props;
+  const autoRouting = useComposerAutoRouting({
+    environmentId,
+    threadId: routeThreadRef.threadId,
+    isServerThread: routeKind === "server",
+    threadStarted: routeKind === "server",
+  });
+  const refreshAutoRouting = autoRouting.refresh;
+  const autoRoutingTurnSettled =
+    autoRouting.available && routeKind === "server" && phase === "ready";
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- escalation offers are computed by the server once a turn settles.
+  useEffect(() => {
+    if (autoRoutingTurnSettled) refreshAutoRouting();
+  }, [autoRoutingTurnSettled, refreshAutoRouting]);
+  const autoRoutingEscalationItem = useAutoRoutingEscalationItem({
+    routing: autoRouting,
+    environmentId,
+    threadId: routeKind === "server" ? routeThreadRef.threadId : null,
+    busy: phase === "running" || isSendBusy,
+  });
   const classicControls = useClassicComposerControls();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const composerDraftTargetKey = composerTargetKey(composerDraftTarget);
@@ -2342,6 +2363,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       onMultipleModelSelectionsChange={setMultipleModelSelections}
       selectedModelSelection={selectedModelSelection}
       onProviderModelSelect={onProviderModelSelect}
+      autoRouting={autoRouting}
       activeThreadModelSelection={activeThreadModelSelection}
       selectedModelForPickerWithCustomFallback={selectedModelForPickerWithCustomFallback}
       lockedProvider={lockedProvider}
@@ -2363,7 +2385,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         (item) =>
           item.group === "environment" && (item.variant === "error" || item.variant === "warning"),
       )
-    : props.bannerItems;
+    : autoRoutingEscalationItem === null
+      ? props.bannerItems
+      : [...props.bannerItems, autoRoutingEscalationItem];
 
   const insertComposerText = (
     text: string,

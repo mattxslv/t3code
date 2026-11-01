@@ -121,6 +121,18 @@ returns to the remembered selection.
 
 Leaving reasoning level or service tier unset uses the provider's own configuration.
 
+## Auto model routing
+
+On web and desktop, Auto picks a Claude or Codex model for each turn, so quick questions go to a light model and hard tasks to a stronger one. Turn it on in **Settings › Auto routing**, then switch any thread to Auto from the row at the bottom of the model picker. The picker shows `Auto · Model` and, when you open it, why that model was chosen.
+
+- Auto only uses Claude and Codex instances signed in with a subscription. API-key and cloud-billed instances are skipped unless you allow metered providers.
+- Choosing a model in an Auto thread pins it. Auto never changes a pinned model; use **Return to Auto** in the picker to resume.
+- While the agent is working or waiting for your approval, Auto keeps the current model. Queued and steering messages behave as usual.
+- **Hide from Auto** keeps a model out of Auto, including fallback and escalation, while leaving it in the manual picker. Fable 5.1 and GPT-6 Astra start hidden.
+- After a failed check, or when you say a fix did not work, Auto can offer a stronger model. It asks first by default and escalates at most once per task. Rate limits and outages switch to another eligible model instead.
+- Projects can set their own profile (Economy, Balanced or Quality) and preferred models under the project scope of the same page. Exclusions and safety settings stay global.
+- Dry run records what Auto would choose without using it. The simulator, routing history and per-model eligibility live on the same page. History stores models and reasons, never your messages.
+
 ## Quote an assistant response
 
 On web and desktop, select text within one assistant response and choose

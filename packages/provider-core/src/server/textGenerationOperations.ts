@@ -11,6 +11,7 @@ import {
   buildCommitMessagePrompt,
   buildPrContentPrompt,
   buildReviewGuidePrompt,
+  buildRoutingClassificationPrompt,
   buildThreadTitlePrompt,
 } from "./textGenerationPrompts.ts";
 import {
@@ -167,11 +168,23 @@ export function fromRunner(name: string, run: Runner): ProviderTextGeneration {
     });
   });
 
+  const classifyRoutingTask: NonNullable<ProviderTextGeneration["classifyRoutingTask"]> = Effect.fn(
+    `${name}.classifyRoutingTask`,
+  )(function* (input) {
+    return yield* run({
+      operation: "classifyRoutingTask",
+      cwd: input.cwd,
+      modelSelection: input.modelSelection,
+      ...buildRoutingClassificationPrompt(input.message),
+    });
+  });
+
   return {
     generateCommitMessage,
     generatePrContent,
     generateBranchName,
     generateThreadTitle,
     generateReviewGuide,
+    classifyRoutingTask,
   } satisfies ProviderTextGeneration;
 }

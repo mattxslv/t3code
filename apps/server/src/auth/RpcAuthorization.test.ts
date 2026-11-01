@@ -51,6 +51,26 @@ describe("RPC authorization scopes", () => {
     );
   });
 
+  it("lets readers see Auto routing but keeps actions that start turns or spend usage behind operate", () => {
+    for (const method of [
+      WS_METHODS.autoRoutingGetThreadState,
+      WS_METHODS.autoRoutingListHistory,
+      WS_METHODS.autoRoutingGetDiagnostics,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
+    }
+    for (const method of [
+      WS_METHODS.autoRoutingSimulate,
+      WS_METHODS.autoRoutingRespondEscalation,
+      WS_METHODS.autoRoutingSubmitFeedback,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationOperateScope);
+    }
+    expect(requiredScopeForRpcMethod(WS_METHODS.autoRoutingClearHistory)).toBe(
+      AuthSettingsWriteScope,
+    );
+  });
+
   it("separates passive terminal observation from operations that can change a shell", () => {
     for (const method of [WS_METHODS.terminalObserve, WS_METHODS.subscribeTerminalMetadata]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthTerminalReadScope);

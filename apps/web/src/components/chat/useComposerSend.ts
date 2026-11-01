@@ -1,3 +1,4 @@
+import type { AutoRoutingRequest } from "@t3tools/contracts";
 import {
   mergeDirectPreviewAnnotation,
   resolveBackgroundDraftWorkspaceOptions,
@@ -179,6 +180,9 @@ interface ComposerSendInput {
   readonly activeMessageCount: number;
   readonly isServerThread: boolean;
   readonly isLocalDraftThread: boolean;
+  /** Present while the thread is in Auto or pinned mode; the server makes the final choice. */
+  readonly autoRoutingRequest: AutoRoutingRequest | undefined;
+  readonly refreshAutoRouting: () => void;
   readonly isGitRepo: boolean;
   readonly phase: SessionPhase;
   readonly runtimeMode: RuntimeMode;
@@ -1354,6 +1358,9 @@ export function useComposerSend(input: ComposerSendInput) {
             }),
           },
           modelSelection: ctxSelectedModelSelection,
+          ...(input.autoRoutingRequest === undefined
+            ? {}
+            : { autoRouting: input.autoRoutingRequest }),
           titleSeed: title,
           runtimeMode,
           interactionMode: sendInteractionMode,
@@ -1390,6 +1397,7 @@ export function useComposerSend(input: ComposerSendInput) {
         failure = startResult;
       } else {
         turnStartSucceeded = true;
+        if (input.autoRoutingRequest !== undefined) input.refreshAutoRouting();
         setKeepFullHistory(routeThreadKey, false);
         clearUsageLimitsFor(routeThreadKey);
         if (turnUsesAttachmentUploads) {

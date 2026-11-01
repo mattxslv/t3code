@@ -30,6 +30,12 @@ import {
   ProviderOptionSelections,
 } from "./model.ts";
 import { ModelSelection } from "./modelSelection.ts";
+import {
+  AutoRoutingPreferences,
+  AutoRoutingSettings,
+  DEFAULT_AUTO_ROUTING_PREFERENCES,
+  DEFAULT_AUTO_ROUTING_SETTINGS,
+} from "./autoRouting.ts";
 import { ProjectScript, type ProjectMutation } from "./project.ts";
 import { DEFAULT_RUNTIME_MODE, RuntimeMode } from "./providerPolicy.ts";
 import { BrowserProfile, BrowserProfileId, DEFAULT_BROWSER_PROFILE_ID } from "./browserProfile.ts";
@@ -1077,6 +1083,7 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "sidebarAutoSettleKeepPullRequests",
   "continueThreadsAfterServerUpdate",
   "responseStreamingMode",
+  "autoRoutingPreferences",
 ] as const;
 export type ProjectScopedServerSettingKey = (typeof PROJECT_SCOPED_SERVER_SETTING_KEYS)[number];
 
@@ -1114,6 +1121,7 @@ export const ProjectSettingsOverrides = Schema.Struct({
   sidebarAutoSettleKeepPullRequests: Schema.optionalKey(Schema.Boolean),
   continueThreadsAfterServerUpdate: Schema.optionalKey(Schema.Boolean),
   responseStreamingMode: Schema.optionalKey(ResponseStreamingMode),
+  autoRoutingPreferences: Schema.optionalKey(AutoRoutingPreferences),
   providerInstances: Schema.optionalKey(
     Schema.Record(ProviderInstanceId, ProjectProviderInstanceOverride),
   ),
@@ -1251,6 +1259,12 @@ export const ServerSettings = Schema.Struct({
   ),
   fallbackModelSelection: Schema.NullOr(ModelSelection).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  autoRouting: AutoRoutingSettings.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_AUTO_ROUTING_SETTINGS)),
+  ),
+  autoRoutingPreferences: AutoRoutingPreferences.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_AUTO_ROUTING_PREFERENCES)),
   ),
   defaultRuntimeMode: RuntimeMode.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE)),
@@ -1616,6 +1630,9 @@ export const ServerSettingsPatch = Schema.Struct({
   defaultModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   defaultRuntimeMode: Schema.optionalKey(RuntimeMode),
   fallbackModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  /** Both replace the whole setting. */
+  autoRouting: Schema.optionalKey(AutoRoutingSettings),
+  autoRoutingPreferences: Schema.optionalKey(AutoRoutingPreferences),
   /** Replaces each project's override set; null removes it. Omitted providerInstances retains its stored value. */
   projectSettingsOverrides: Schema.optionalKey(
     Schema.Record(

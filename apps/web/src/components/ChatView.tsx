@@ -26,6 +26,7 @@ import { useThreadLifecycle } from "./chat/useThreadLifecycle";
 import { useRightPanelActions } from "./chat/useRightPanelActions";
 import { type TerminalLaunchContext, useChatTerminalActions } from "./chat/useChatTerminalActions";
 import { useComposerSend } from "./chat/useComposerSend";
+import { useComposerAutoRouting } from "./chat/useComposerAutoRouting";
 import { useComposerResume } from "./chat/useComposerResume";
 import { useImplementPlanInNewThread } from "./chat/useProposedPlanSend";
 import { ThreadFind, ThreadFindCanvas } from "./chat/ThreadFindProvider";
@@ -2907,9 +2908,17 @@ export default function ChatView(props: ChatViewProps) {
     activeEnvironmentUnavailable,
     defaultRuntimeMode,
   });
+  const autoRouting = useComposerAutoRouting({
+    environmentId,
+    threadId,
+    isServerThread,
+    threadStarted: isServerThread,
+  });
   const { onSend } = useComposerSend({
     environmentId,
     routeThreadKey,
+    autoRoutingRequest: autoRouting.request,
+    refreshAutoRouting: autoRouting.refresh,
     currentRouteThreadKeyRef,
     draftId,
     draftThread,

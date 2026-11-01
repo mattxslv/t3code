@@ -72,6 +72,17 @@ export interface ThreadTitleGenerationResult {
   needsRefinement?: boolean | undefined;
 }
 
+export interface RoutingTaskClassificationInput {
+  /** An empty directory, so the runner loads no repository instructions. */
+  cwd: string;
+  message: string;
+  modelSelection: ModelSelection;
+}
+
+export interface RoutingTaskClassificationResult {
+  complexity: "trivial" | "simple" | "moderate" | "complex";
+}
+
 export interface ReviewGuideStackLayer {
   readonly number: number;
   readonly title: string | null;
@@ -117,4 +128,9 @@ export interface ProviderTextGeneration {
   readonly generateReviewGuide: (
     input: ReviewGuideGenerationInput,
   ) => Effect.Effect<ReviewGuideGenerationResult, TextGenerationError>;
+
+  /** Optional: only runner-based providers classify tasks for Auto routing. */
+  readonly classifyRoutingTask?: (
+    input: RoutingTaskClassificationInput,
+  ) => Effect.Effect<RoutingTaskClassificationResult, TextGenerationError>;
 }

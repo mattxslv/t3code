@@ -177,6 +177,8 @@ export interface StartThreadTurnInput extends ThreadCommandInput {
     readonly idleCompaction?: import("@t3tools/contracts").OrchestrationV2IdleCompaction;
   };
   readonly modelSelection?: ModelSelection;
+  /** Asks the server to choose the model. `modelSelection` is still sent as the manual fallback. */
+  readonly autoRouting?: import("@t3tools/contracts").AutoRoutingRequest;
   readonly titleSeed?: string;
   readonly runtimeMode: RuntimeMode;
   readonly interactionMode: ProviderInteractionMode;
@@ -718,6 +720,7 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
       title: input.titleSeed ?? thread.title,
       generateTitle: input.titleSeed !== undefined,
       modelSelection: input.modelSelection ?? thread.modelSelection,
+      ...(input.autoRouting === undefined ? {} : { autoRouting: input.autoRouting }),
       runtimeMode: input.runtimeMode,
       interactionMode: input.interactionMode,
       workspaceStrategy,
@@ -749,6 +752,7 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
         : { idleCompaction: input.message.idleCompaction }),
       attachments,
       ...(input.modelSelection === undefined ? {} : { modelSelection: input.modelSelection }),
+      ...(input.autoRouting === undefined ? {} : { autoRouting: input.autoRouting }),
       ...(input.sourceProposedPlan === undefined
         ? {}
         : { sourcePlanRef: input.sourceProposedPlan }),
@@ -775,6 +779,7 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
     attachments,
     ...(input.titleSeed === undefined ? {} : { titleSeed: input.titleSeed }),
     ...(input.modelSelection === undefined ? {} : { modelSelection: input.modelSelection }),
+    ...(input.autoRouting === undefined ? {} : { autoRouting: input.autoRouting }),
     ...(input.sourceProposedPlan === undefined ? {} : { sourcePlanRef: input.sourceProposedPlan }),
     ...(requestedMode !== "queue" ? { deliveryIntent: requestedMode } : {}),
     dispatchMode,

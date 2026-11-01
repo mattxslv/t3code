@@ -108,6 +108,15 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.serverRetryResourceTelemetry]: AuthDiagnosticsReadScope,
   [WS_METHODS.serverGetUsageSummary]: AuthDiagnosticsReadScope,
   [WS_METHODS.serverRefreshUsageRates]: AuthDiagnosticsReadScope,
+  [WS_METHODS.autoRoutingGetThreadState]: AuthOrchestrationReadScope,
+  [WS_METHODS.autoRoutingListHistory]: AuthOrchestrationReadScope,
+  // Simulating can run the AI classifier, which spends provider usage.
+  [WS_METHODS.autoRoutingSimulate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.autoRoutingGetDiagnostics]: AuthOrchestrationReadScope,
+  // Accepting starts a provider turn, so it needs the same scope as sending a message.
+  [WS_METHODS.autoRoutingRespondEscalation]: AuthOrchestrationOperateScope,
+  [WS_METHODS.autoRoutingSubmitFeedback]: AuthOrchestrationOperateScope,
+  [WS_METHODS.autoRoutingClearHistory]: AuthSettingsWriteScope,
   [WS_METHODS.serverSignalProcess]: AuthEnvironmentMaintainScope,
   [WS_METHODS.serverReportClientActivity]: AuthOrchestrationReadScope,
   [WS_METHODS.scheduledTasksSubscribe]: AuthOrchestrationReadScope,

@@ -26,6 +26,7 @@ export type SettingsPath =
   | "/settings/keybindings"
   | "/settings/snap-shot"
   | "/settings/providers"
+  | "/settings/auto-routing"
   | "/settings/threads"
   | "/settings/browser"
   | "/settings/devices"
@@ -97,6 +98,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/keybindings": "Keybindings",
   "/settings/snap-shot": "SnapShots",
   "/settings/providers": "Providers",
+  "/settings/auto-routing": "Auto routing",
   "/settings/threads": "Threads",
   "/settings/browser": "Browser",
   "/settings/devices": "Devices",
@@ -133,6 +135,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
     heading: "Agents",
     paths: [
       "/settings/providers",
+      "/settings/auto-routing",
       "/settings/threads",
       "/settings/browser",
       "/settings/devices",
@@ -219,6 +222,45 @@ const SOURCE_CONTROL_HOST_TERMS = sourceControlClients.definitions
   .join(" ");
 
 export const SETTINGS_SEARCH_ITEMS = [
+  {
+    id: "auto-routing-enabled",
+    title: "Auto model routing",
+    to: "/settings/auto-routing",
+    searchTerms: ["auto model routing router pick claude codex automatic selection opt in"],
+  },
+  {
+    id: "auto-routing-default-mode",
+    title: "New threads start in",
+    to: "/settings/auto-routing",
+    searchTerms: ["auto manual default mode new threads"],
+  },
+  {
+    id: "auto-routing-profile",
+    title: "Routing profile",
+    to: "/settings/auto-routing",
+    scope: "project-defaults",
+    searchTerms: ["economy balanced quality profile usage efficiency project preference"],
+  },
+  {
+    id: "auto-routing-escalation",
+    title: "Escalation",
+    to: "/settings/auto-routing",
+    searchTerms: [
+      "escalate stronger model failure retry approval fallback rate limit metered api hide from auto",
+    ],
+  },
+  {
+    id: "auto-routing-simulator",
+    title: "Routing simulator",
+    to: "/settings/auto-routing",
+    searchTerms: ["simulate dry run test routing decision"],
+  },
+  {
+    id: "auto-routing-history",
+    title: "Routing history",
+    to: "/settings/auto-routing",
+    searchTerms: ["routing history analytics diagnostics feedback decisions"],
+  },
   {
     id: "storage-worktree-keep-when",
     targetId: "storage-worktrees",
@@ -1277,6 +1319,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/snap-shot": null,
   "/settings/keybindings": null,
   "/settings/providers": null,
+  "/settings/auto-routing": null,
   "/settings/threads": null,
   "/settings/browser": null,
   "/settings/devices": null,

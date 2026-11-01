@@ -1117,6 +1117,30 @@ export function createServerEnvironmentAtoms<R, E>(
       Atom.withLabel(`environment-data:server:providers:${environmentId}`),
     ),
   );
+  // Routing answers change with routing settings and provider availability, not on a timer.
+  const autoRoutingInputsAtom = Atom.family((environmentId: EnvironmentId) =>
+    Atom.make((get) => {
+      const settings = get(settingsValueAtom(environmentId));
+      const providers = get(providersValueAtom(environmentId)) ?? [];
+      return JSON.stringify([
+        settings?.autoRouting ?? null,
+        settings?.autoRoutingPreferences ?? null,
+        Object.entries(settings?.projectSettingsOverrides ?? {}).map(([projectId, overrides]) => [
+          projectId,
+          overrides.autoRoutingPreferences ?? null,
+        ]),
+        providers.map((provider) => [
+          provider.instanceId,
+          provider.enabled,
+          provider.status,
+          provider.auth.status,
+          provider.auth.type ?? null,
+          provider.models.length,
+          provider.usageLimits?.checkedAt ?? null,
+        ]),
+      ]);
+    }).pipe(Atom.withLabel(`environment-data:auto-routing:inputs:${environmentId}`)),
+  );
   const welcomeStateFamily = Atom.family((environmentId: EnvironmentId) =>
     runtime
       .atom(serverWelcomeStateChanges(environmentId), { initialValue: null })
@@ -1285,6 +1309,24 @@ export function createServerEnvironmentAtoms<R, E>(
     processResourceHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:process-resource-history",
       tag: WS_METHODS.serverGetProcessResourceHistory,
+    }),
+    autoRoutingThreadState: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:auto-routing:thread-state",
+      tag: WS_METHODS.autoRoutingGetThreadState,
+      staleTimeMs: 5_000,
+      refreshTrigger: ({ environmentId }) => autoRoutingInputsAtom(environmentId),
+    }),
+    autoRoutingHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:auto-routing:history",
+      tag: WS_METHODS.autoRoutingListHistory,
+      staleTimeMs: 10_000,
+      refreshTrigger: ({ environmentId }) => autoRoutingInputsAtom(environmentId),
+    }),
+    autoRoutingDiagnostics: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:auto-routing:diagnostics",
+      tag: WS_METHODS.autoRoutingGetDiagnostics,
+      staleTimeMs: 10_000,
+      refreshTrigger: ({ environmentId }) => autoRoutingInputsAtom(environmentId),
     }),
     scheduledTaskWebhookDeliveries: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:scheduled-task:webhook-deliveries",
@@ -1557,6 +1599,27 @@ export function createServerEnvironmentAtoms<R, E>(
         key: ({ environmentId, input }) =>
           JSON.stringify([environmentId, input.threadId, input.turnItemId]),
       },
+    }),
+    autoRoutingSimulate: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:auto-routing:simulate",
+      tag: WS_METHODS.autoRoutingSimulate,
+      concurrency: { mode: "latest", key: ({ environmentId }) => environmentId },
+    }),
+    autoRoutingRespondEscalation: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:auto-routing:respond-escalation",
+      tag: WS_METHODS.autoRoutingRespondEscalation,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId, input }) => `${environmentId}:${input.offerId}`,
+      },
+    }),
+    autoRoutingSubmitFeedback: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:auto-routing:submit-feedback",
+      tag: WS_METHODS.autoRoutingSubmitFeedback,
+    }),
+    autoRoutingClearHistory: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:auto-routing:clear-history",
+      tag: WS_METHODS.autoRoutingClearHistory,
     }),
     refreshUsageRates: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:refresh-usage-rates",

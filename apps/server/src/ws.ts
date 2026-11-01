@@ -238,6 +238,7 @@ import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import { commandFeatureUsage, featureUsage } from "./telemetry/FeatureUsage.ts";
 import type { TelemetryOwner } from "./telemetry/Identify.ts";
+import * as AutoRouting from "./autoRouting/AutoRoutingService.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as TriageService from "./triage/TriageService.ts";
@@ -1239,6 +1240,7 @@ export const layerWsRpc = (
         | ServerConfig.ServerConfig
         | ServerSettings.ServerSettingsService
         | DocumentText.DocumentText
+        | AutoRouting.AutoRoutingService
       >();
       const applicationEvents = yield* OrchestrationEventStore.OrchestrationEventStore;
       const projectStore = yield* ProjectStore.ProjectStoreV2;
@@ -1302,6 +1304,7 @@ export const layerWsRpc = (
               Effect.orElseSucceed(() => null),
             );
       const usage = yield* UsageService.UsageService;
+      const autoRouting = yield* AutoRouting.AutoRoutingService;
       const usageLimitSources = yield* UsageLimitSources.UsageLimitSources;
       const worktreeSetupTracker = yield* WorktreeSetupTracker.WorktreeSetupTracker;
       const projectCloneTracker = yield* ProjectCloneTracker.ProjectCloneTracker;
@@ -1794,6 +1797,7 @@ export const layerWsRpc = (
           shellResumeCompletionMarker: true,
           shellThreadFamilies: true,
           shellOlderSettled: true,
+          autoModelRouting: true,
           threadResumeCompletionMarker: true,
           threadSnapshotPagination: true,
           threadFind: true,
@@ -2051,6 +2055,7 @@ export const layerWsRpc = (
                       ? {}
                       : { generateTitle: input.generateTitle }),
                     modelSelection: input.modelSelection,
+                    ...(input.autoRouting === undefined ? {} : { autoRouting: input.autoRouting }),
                     runtimeMode: input.runtimeMode,
                     interactionMode: input.interactionMode,
                     workspaceStrategy: input.workspaceStrategy,
@@ -2540,6 +2545,14 @@ export const layerWsRpc = (
           resourceTelemetry.readHistory(input),
         [WS_METHODS.serverGetUsageSummary]: (input) => usage.readSummary(input),
         [WS_METHODS.serverRefreshUsageRates]: (_input) => usage.refreshRates,
+        [WS_METHODS.autoRoutingGetThreadState]: (input) =>
+          autoRouting.getThreadState(input.threadId),
+        [WS_METHODS.autoRoutingListHistory]: (input) => autoRouting.listHistory(input),
+        [WS_METHODS.autoRoutingSimulate]: (input) => autoRouting.simulate(input),
+        [WS_METHODS.autoRoutingGetDiagnostics]: (input) => autoRouting.getDiagnostics(input),
+        [WS_METHODS.autoRoutingRespondEscalation]: (input) => autoRouting.respondEscalation(input),
+        [WS_METHODS.autoRoutingSubmitFeedback]: (input) => autoRouting.submitFeedback(input),
+        [WS_METHODS.autoRoutingClearHistory]: (_input) => autoRouting.clearHistory,
         [WS_METHODS.serverRetryResourceTelemetry]: (_input) => resourceTelemetry.retry,
         [WS_METHODS.serverCheckOtlpEndpoint]: (input) => otlpEndpointCheck.check(input),
         [WS_METHODS.serverPrepareTriage]: (input) => triage.prepare(input),
@@ -3281,6 +3294,7 @@ export const layer = Layer.unwrap(
     const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
     const peerLinks = yield* PeerLinks.PeerLinks;
     const peerLinkRequests = yield* PeerLinkRequests.PeerLinkRequests;
+    const autoRoutingService = yield* AutoRouting.AutoRoutingService;
     const sql = yield* SqlClient.SqlClient;
     return HttpRouter.add(
       "GET",
@@ -3364,6 +3378,7 @@ export const layer = Layer.unwrap(
               ),
               Layer.provide(Layer.succeed(PeerLinks.PeerLinks, peerLinks)),
               Layer.provide(Layer.succeed(PeerLinkRequests.PeerLinkRequests, peerLinkRequests)),
+              Layer.provide(Layer.succeed(AutoRouting.AutoRoutingService, autoRoutingService)),
               Layer.provide(
                 SourceControlDiscovery.layer.pipe(
                   Layer.provide(

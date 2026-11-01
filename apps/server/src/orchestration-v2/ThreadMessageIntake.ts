@@ -2,7 +2,9 @@ import { remapComposerContextAttachments } from "@t3tools/shared/composerContext
 import { appendUserInputAttachmentPaths } from "../provider/userInputAttachments.ts";
 import type { ChatAttachment, OrchestrationV2Command } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as AutoRouting from "../autoRouting/AutoRoutingService.ts";
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
 import * as Orchestrator from "./Orchestrator.ts";
@@ -81,11 +83,38 @@ const withGuestAttachments = Effect.fn("ThreadMessageIntake.withGuestAttachments
   return { ...command, attachments: message?.attachments ?? [] };
 });
 
+/** Resolves an Auto-routed turn's model; without the service the client's selection stands. */
+const withAutoRouting = Effect.fn("ThreadMessageIntake.withAutoRouting")(function* (
+  command: Extract<OrchestrationV2Command, { readonly type: "message.dispatch" }>,
+) {
+  if (command.autoRouting === undefined) return command;
+  const routing = yield* Effect.serviceOption(AutoRouting.AutoRoutingService);
+  if (Option.isNone(routing)) {
+    const { autoRouting: _autoRouting, ...manual } = command;
+    return manual;
+  }
+  return yield* routing.value.resolveDispatch(command);
+});
+
+const launchWithAutoRouting = Effect.fn("ThreadMessageIntake.launchWithAutoRouting")(function* (
+  input: ThreadLaunch.ThreadLaunchInput,
+) {
+  if (input.autoRouting === undefined) return input;
+  const routing = yield* Effect.serviceOption(AutoRouting.AutoRoutingService);
+  if (Option.isNone(routing)) {
+    const { autoRouting: _autoRouting, ...manual } = input;
+    return manual;
+  }
+  return yield* routing.value.resolveLaunch(input);
+});
+
 export const dispatchCommand = Effect.fn("ThreadMessageIntake.dispatchCommand")(function* (
   incoming: OrchestrationV2Command,
 ) {
   const command =
-    incoming.type === "message.dispatch" ? yield* withGuestAttachments(incoming) : incoming;
+    incoming.type === "message.dispatch"
+      ? yield* withAutoRouting(yield* withGuestAttachments(incoming))
+      : incoming;
   const threads = yield* ThreadManagement.ThreadManagementService;
   if (command.type === "runtime-request.respond" && command.attachmentsByQuestionId) {
     const config = yield* ServerConfig.ServerConfig;
@@ -207,8 +236,9 @@ export const sendToThread = Effect.fn("ThreadMessageIntake.sendToThread")(functi
 });
 
 export const launchThread = Effect.fn("ThreadMessageIntake.launchThread")(function* (
-  input: ThreadLaunch.ThreadLaunchInput,
+  requested: ThreadLaunch.ThreadLaunchInput,
 ) {
+  const input = yield* launchWithAutoRouting(requested);
   const launches = yield* ThreadLaunch.ThreadLaunchService;
   yield* AttachmentClaims.validateAttachmentLimits(input.initialMessage?.attachments ?? []);
   if (!input.initialMessage?.attachments.some(AttachmentClaims.attachmentIsPendingUpload)) {

@@ -30,6 +30,8 @@ import {
 import type { useComposerProviderModel } from "./useComposerProviderModel";
 import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
 import { useClassicComposerControls } from "./useClassicComposerControls";
+import { AutoRoutingPickerRow, autoRoutingTriggerLabel } from "./ComposerAutoRouting";
+import type { ComposerAutoRouting } from "./useComposerAutoRouting";
 
 /**
  * The composer footer controls: the model picker (which also holds effort, speed and
@@ -77,6 +79,7 @@ export function ComposerControlsBar(props: {
   onMultipleModelSelectionsChange: ChatComposerProps["onMultipleModelSelectionsChange"];
   selectedModelSelection: ModelSelection;
   onProviderModelSelect: ChatComposerProps["onProviderModelSelect"];
+  autoRouting: ComposerAutoRouting;
   activeThreadModelSelection: ChatComposerProps["activeThreadModelSelection"];
   selectedModelForPickerWithCustomFallback: string;
   lockedProvider: ChatComposerProps["lockedProvider"];
@@ -125,6 +128,7 @@ export function ComposerControlsBar(props: {
     onMultipleModelSelectionsChange,
     selectedModelSelection,
     onProviderModelSelect,
+    autoRouting,
     activeThreadModelSelection,
     selectedModelForPickerWithCustomFallback,
     lockedProvider,
@@ -190,6 +194,22 @@ export function ComposerControlsBar(props: {
         },
       ]
     : [];
+  // Name the model the server routed to; the draft selection can lag behind it.
+  const routedSelection = autoRouting.state?.latestDecision?.selection ?? null;
+  const labelInstanceId = routedSelection?.instanceId ?? selectedInstanceId;
+  const labelModel = routedSelection?.model ?? selectedModel;
+  const pickerModel = modelOptionsByInstance
+    .get(labelInstanceId)
+    ?.find((option) => option.slug === labelModel);
+  const autoTriggerLabel = autoRoutingTriggerLabel(
+    autoRouting,
+    pickerModel === undefined ? null : (pickerModel.shortName ?? pickerModel.name),
+  );
+  // Choosing a model in an Auto thread pins it; Auto never overrides a pin.
+  const selectProviderModel: typeof onProviderModelSelect = (instanceId, model, options) => {
+    if (autoRouting.mode === "auto") autoRouting.setMode("pinned");
+    onProviderModelSelect(instanceId, model, options);
+  };
   // Its own element, so typing (which rebuilds the controls around it) leaves it cached.
   const composerModelPicker = (
     <ComposerModelPicker
@@ -201,7 +221,8 @@ export function ComposerControlsBar(props: {
       multipleModelSelections={multipleModelSelections}
       onMultipleModelSelectionsChange={onMultipleModelSelectionsChange}
       selectedModelSelection={selectedModelSelection}
-      onProviderModelSelect={onProviderModelSelect}
+      onProviderModelSelect={selectProviderModel}
+      {...(autoTriggerLabel === undefined ? {} : { triggerLabel: autoTriggerLabel })}
       activeInstanceId={
         providerCatalogPending
           ? (activeThreadModelSelection?.instanceId ?? selectedInstanceId)
@@ -231,12 +252,15 @@ export function ComposerControlsBar(props: {
       }
       effortColumn={<ComposerEffortColumn traits={traitsInput} />}
       footer={
-        <ComposerPickerFooter
-          traits={traitsInput}
-          runtimeMode={compatibleRuntimeMode}
-          runtimeModeOptions={compatibleRuntimeModeOptions}
-          onRuntimeModeChange={handleRuntimeModeChange}
-        />
+        <>
+          <AutoRoutingPickerRow routing={autoRouting} environmentId={environmentId} />
+          <ComposerPickerFooter
+            traits={traitsInput}
+            runtimeMode={compatibleRuntimeMode}
+            runtimeModeOptions={compatibleRuntimeModeOptions}
+            onRuntimeModeChange={handleRuntimeModeChange}
+          />
+        </>
       }
       terminalOpen={terminalOpen}
       open={modelPickerOpen}
