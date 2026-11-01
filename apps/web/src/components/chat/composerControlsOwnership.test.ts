@@ -5,7 +5,6 @@ import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
 const base = {
   matchesDefault: true,
   planModeUiEnabled: false,
-  collapsed: false,
   measuredHiddenBlockCount: 0,
 };
 
@@ -20,10 +19,10 @@ describe("resolveComposerControlsOwnership", () => {
     });
   });
 
-  it("shows a labelled chip that owns composer.mode when the mode differs", () => {
+  it("shows an icon-only chip that owns composer.mode when the mode differs", () => {
     const result = resolveComposerControlsOwnership({ ...base, matchesDefault: false });
     expect(result).toMatchObject({
-      accessDisplay: "label",
+      accessDisplay: "icon",
       showModeBlock: true,
       pickerOwnsModeShortcut: false,
     });
@@ -63,14 +62,5 @@ describe("resolveComposerControlsOwnership", () => {
     // Permissions stay in the model picker, which now answers composer.mode.
     expect(result.overflowShowsPermissions).toBe(false);
     expect(result.pickerOwnsModeShortcut).toBe(true);
-  });
-
-  it("shows the non-default chip as an icon in the compacted row", () => {
-    const result = resolveComposerControlsOwnership({
-      ...base,
-      matchesDefault: false,
-      collapsed: true,
-    });
-    expect(result.accessDisplay).toBe("icon");
   });
 });

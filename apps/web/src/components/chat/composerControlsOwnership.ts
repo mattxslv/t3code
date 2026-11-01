@@ -7,15 +7,11 @@ export function resolveComposerControlsOwnership(input: {
   /** Permissions hide while the mode is the default, or while the new-thread strip names it. */
   readonly matchesDefault: boolean;
   readonly planModeUiEnabled: boolean;
-  readonly collapsed: boolean;
   /** How many trailing blocks the width measurement moved into the overflow menu. */
   readonly measuredHiddenBlockCount: number;
 }) {
-  const accessDisplay = input.matchesDefault
-    ? ("hidden" as const)
-    : input.collapsed
-      ? ("icon" as const)
-      : ("label" as const);
+  // Icon only; the tooltip and accessible label name the mode.
+  const accessDisplay = input.matchesDefault ? ("hidden" as const) : ("icon" as const);
   const showModeBlock = accessDisplay !== "hidden" || input.planModeUiEnabled;
   const modeHidden = showModeBlock && input.measuredHiddenBlockCount > 0;
   const hiddenBlockIds = modeHidden ? (["mode"] as const) : ([] as const);

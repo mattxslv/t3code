@@ -31,6 +31,8 @@ import type { useComposerProviderModel } from "./useComposerProviderModel";
 import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
 import { useClassicComposerControls } from "./useClassicComposerControls";
 import {
+  AutoRoutingAiClassificationChip,
+  AutoRoutingAiClassificationRow,
   AutoRoutingPickerRow,
   autoRoutingTrigger,
   AutoRoutingTriggerIcon,
@@ -159,7 +161,6 @@ export function ComposerControlsBar(props: {
     // Classic controls always show the permissions chip.
     matchesDefault: !classic && (accessMatchesDefault || props.permissionsShownInStrip),
     planModeUiEnabled,
-    collapsed: composerControlsCollapsed,
     measuredHiddenBlockCount,
   });
   const controlSize = composerControlsCollapsed ? "xs" : "sm";
@@ -264,6 +265,7 @@ export function ComposerControlsBar(props: {
       footer={
         <>
           <AutoRoutingPickerRow routing={autoRouting} environmentId={environmentId} />
+          <AutoRoutingAiClassificationRow routing={autoRouting} environmentId={environmentId} />
           <ComposerPickerFooter
             traits={traitsInput}
             runtimeMode={compatibleRuntimeMode}
@@ -305,6 +307,11 @@ export function ComposerControlsBar(props: {
   ) : (
     <>
       {composerModelPicker}
+      <AutoRoutingAiClassificationChip
+        routing={autoRouting}
+        environmentId={environmentId}
+        size={controlSize}
+      />
       {classic && traitsInput ? (
         <TraitsPicker {...traitsInput} size={controlSize} hidden={composerControlsHidden} />
       ) : null}

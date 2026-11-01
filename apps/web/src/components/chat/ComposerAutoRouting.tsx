@@ -1,13 +1,27 @@
-import { CommandId, type EnvironmentId, type ThreadId } from "@t3tools/contracts";
-import { RouteIcon, ThumbsDownIcon, ThumbsUpIcon, TrendingUpIcon } from "lucide-react";
+import {
+  AuthSettingsWriteScope,
+  CommandId,
+  type EnvironmentId,
+  type ThreadId,
+} from "@t3tools/contracts";
+import {
+  RouteIcon,
+  SparklesIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
+  TrendingUpIcon,
+} from "lucide-react";
 
+import { useUpdateEnvironmentSettings } from "../../hooks/useSettings";
 import { randomUUID } from "../../lib/utils";
 import { serverEnvironment } from "../../state/server";
+import { useEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
+import { ComposerControl, ComposerControlIcon, type ComposerControlSize } from "./ComposerControl";
 import type { ComposerAutoRouting } from "./useComposerAutoRouting";
 
 /**
@@ -113,6 +127,103 @@ export function AutoRoutingPickerRow(props: {
         />
       )}
     </div>
+  );
+}
+
+function useAiClassificationToggle(routing: ComposerAutoRouting, environmentId: EnvironmentId) {
+  const updateSettings = useUpdateEnvironmentSettings(environmentId);
+  const canWrite = useEnvironmentScope(environmentId, AuthSettingsWriteScope);
+  const enabled = routing.settings.aiClassification;
+  return {
+    visible: routing.available && routing.mode === "auto",
+    enabled,
+    canWrite,
+    description: enabled
+      ? "A light model sizes unclear requests. Only your message is sent."
+      : "Unclear requests are sized by keywords only.",
+    set: (next: boolean) =>
+      updateSettings({ autoRouting: { ...routing.settings, aiClassification: next } }),
+  };
+}
+
+/** The AI classification switch under the Auto row; the same environment setting as in Settings. */
+export function AutoRoutingAiClassificationRow(props: {
+  readonly routing: ComposerAutoRouting;
+  readonly environmentId: EnvironmentId;
+}) {
+  const toggle = useAiClassificationToggle(props.routing, props.environmentId);
+  if (!toggle.visible) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 text-xs">
+      <SparklesIcon className="size-3.5 shrink-0 text-muted-foreground" />
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <span className="font-medium text-foreground">AI classification</span>
+        <Tooltip>
+          <TooltipTrigger render={<span className="truncate text-muted-foreground" />}>
+            {toggle.description}
+          </TooltipTrigger>
+          <TooltipPopup side="top">{toggle.description}</TooltipPopup>
+        </Tooltip>
+      </div>
+      <Switch
+        aria-label="AI classification"
+        checked={toggle.enabled}
+        disabled={!toggle.canWrite}
+        onCheckedChange={toggle.set}
+      />
+    </div>
+  );
+}
+
+/** A short "AI" chip beside the model picker that flips the same setting in one click. */
+export function AutoRoutingAiClassificationChip(props: {
+  readonly routing: ComposerAutoRouting;
+  readonly environmentId: EnvironmentId;
+  readonly size: ComposerControlSize;
+}) {
+  const toggle = useAiClassificationToggle(props.routing, props.environmentId);
+  if (!toggle.visible) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <ComposerControl
+            type="button"
+            size={props.size}
+            className="shrink-0"
+            aria-label="AI classification"
+            aria-pressed={toggle.enabled}
+            disabled={!toggle.canWrite}
+            onClick={() => toggle.set(!toggle.enabled)}
+          />
+        }
+      >
+        <ComposerControlIcon
+          icon={SparklesIcon}
+          size={props.size}
+          {...(toggle.enabled ? { className: "text-primary" } : {})}
+        />
+        <span
+          data-composer-control-label
+          className={toggle.enabled ? "text-foreground" : "text-muted-foreground"}
+        >
+          AI
+        </span>
+      </TooltipTrigger>
+      <TooltipPopup side="top">
+        <div className="grid w-56 gap-1 py-0.5 text-xs">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-medium text-foreground">AI classification</span>
+            <span className={toggle.enabled ? "text-primary" : "text-muted-foreground"}>
+              {toggle.enabled ? "On" : "Off"}
+            </span>
+          </div>
+          <p className="text-muted-foreground">{toggle.description}</p>
+        </div>
+      </TooltipPopup>
+    </Tooltip>
   );
 }
 

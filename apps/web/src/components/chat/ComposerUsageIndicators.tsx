@@ -131,7 +131,7 @@ function UsageIndicator({
                 />
               ) : null}
               {detailed && (remaining !== 100 || Number.isFinite(resetAt)) ? (
-                <span className="absolute inset-y-0 right-0 flex items-center gap-1 border-l border-foreground/50 px-1.5 text-3xs text-foreground tabular-nums">
+                <span className="absolute inset-y-0 right-0 flex items-center gap-1 px-1.5 text-3xs text-foreground tabular-nums">
                   <span>↻</span> {resetCountdown}
                 </span>
               ) : null}
