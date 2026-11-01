@@ -104,6 +104,8 @@ const MODERATE_SIGNALS: ReadonlyArray<readonly [RegExp, string]> = [
   ],
 ];
 
+const MAX_MODERATE_SCORE = 4.5;
+
 const CONTINUATION_START =
   /^(?:and|also|now|then|next|ok(?:ay)?|yes|no|great|thanks|but|instead|actually|try|retry|again|continue|keep going|go ahead|same|still|what about|can you also|please also)\b/i;
 const ANAPHORA = /\b(?:it|that|this|those|these|them|same|again|still|above|previous(?:ly)?)\b/i;
@@ -150,18 +152,24 @@ export function classifyTask(input: ClassificationInput): Classification {
   }
 
   let score = 0;
+  let complexSignals = 0;
   for (const [pattern, signal] of COMPLEX_SIGNALS) {
     if (pattern.test(text)) {
       score += 3;
+      complexSignals += 1;
       signals.push(signal);
     }
   }
+  // Moderate signals overlap ("fix the error" is both debugging and an error report), so stacking
+  // them alone cannot reach complex; that takes a complex signal or a large, structured request.
+  let moderateScore = 0;
   for (const [pattern, signal] of MODERATE_SIGNALS) {
     if (pattern.test(text)) {
-      score += 1.5;
+      moderateScore += 1.5;
       signals.push(signal);
     }
   }
+  score += Math.min(moderateScore, MAX_MODERATE_SCORE);
   if (SMALL_EDIT.test(text)) {
     score -= 2;
     signals.push("small_edit");
@@ -195,7 +203,8 @@ export function classifyTask(input: ClassificationInput): Classification {
   } else if (words > 150) {
     score += 1.5;
     signals.push("detailed_request");
-  } else if (words < 12) {
+  } else if (words < 12 && complexSignals === 0) {
+    // A terse request is usually a small one, but not when it names hard work outright.
     score -= 0.5;
   }
   if (input.attachmentCount > 0) {
