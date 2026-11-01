@@ -6,6 +6,7 @@ import {
   remainingPercent,
   formatResetsIn,
   formatDuration,
+  paceRemainingPercent,
   type LimitAccount,
 } from "@t3tools/shared/usageLimits";
 import { ProviderDriverKind, type ServerProviderUsageWindow } from "@t3tools/contracts";
@@ -78,6 +79,8 @@ function UsageIndicator({
   const weekly = composerUsageWindow(account, "weekly");
   const remaining = session ? remainingPercent(session) : null;
   const resetLabel = session ? formatResetsIn(session, now) : null;
+  // Where even spending would be: the share of the session window's time still left.
+  const timeLeft = session ? paceRemainingPercent(session, now) : null;
   const resetAt = session?.resetsAt ? Date.parse(session.resetsAt) : NaN;
   const resetCountdown = Number.isFinite(resetAt)
     ? resetAt > now
@@ -102,7 +105,7 @@ function UsageIndicator({
         render={
           <ComposerControl
             size="xs"
-            aria-label={`${name}: ${remaining === null ? "session not reported" : `${remaining}% session remaining`}. ${resetLabel ?? "Reset not reported"}. ${status}. Open usage limits`}
+            aria-label={`${name}: ${remaining === null ? "session not reported" : `${remaining}% session remaining`}${timeLeft === null ? "" : `, ${timeLeft}% of the window left`}. ${resetLabel ?? "Reset not reported"}. ${status}. Open usage limits`}
             onClick={() => void navigate({ to: "/usage", search: { metric: "limits" } })}
             data-composer-usage-provider={driver}
           >
@@ -128,6 +131,12 @@ function UsageIndicator({
                     driver === "codex" ? "bg-composer-usage-codex" : "bg-composer-usage-claude"
                   } ${!connected || stale ? "opacity-50" : ""}`}
                   style={{ width: `${remaining}%` }}
+                />
+              ) : null}
+              {detailed && timeLeft !== null ? (
+                <span
+                  className="absolute inset-y-0.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground"
+                  style={{ left: `clamp(2px, ${timeLeft}%, calc(100% - 2px))` }}
                 />
               ) : null}
               {detailed && (remaining !== 100 || Number.isFinite(resetAt)) ? (
