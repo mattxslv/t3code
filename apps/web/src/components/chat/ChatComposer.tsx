@@ -204,6 +204,7 @@ import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
 import { useAutoRoutingEscalationItem } from "./ComposerAutoRouting";
+import { HANDOFF_REQUEST, useLongThreadNoticeItem } from "./LongThreadNotice";
 import { useComposerAutoRouting } from "./useComposerAutoRouting";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
@@ -439,6 +440,8 @@ export interface ChatComposerProps {
   activeProjectId: ProjectId | null;
 
   activeContextWindow: ContextWindowSnapshot | null;
+  /** Opens a fresh thread in this project; the long-thread notice offers it. */
+  onNewThreadInProject?: () => void;
   compactThreadUnavailable: boolean;
   compactDisabled: boolean;
   compactDisabledReason: string | null;
@@ -565,6 +568,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     reportedModelSelection,
     activeProjectId,
     activeContextWindow,
+    onNewThreadInProject,
     compactThreadUnavailable,
     compactDisabled,
     compactDisabledReason,
@@ -1894,6 +1898,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
         return;
       }
+      if (item.command === "handoff") {
+        const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+          expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+        });
+        if (!applied) return;
+        setComposerHighlightedItemId(null);
+        sendHandoffRequest();
+        return;
+      }
       if (item.command === "side" || item.command === "btw") {
         if (props.sideChatDisabledReason) return;
         const applied = applyPromptReplacement(
@@ -2378,16 +2391,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       getModelDisabledReason={getModelDisabledReason}
     />
   );
-  // An open question owns the space above the composer. Only a machine problem,
-  // which is why an answer could not go through, stays beside it.
-  const shelfItems = hasBlockingComposerTopDrawer
-    ? props.bannerItems.filter(
-        (item) =>
-          item.group === "environment" && (item.variant === "error" || item.variant === "warning"),
-      )
-    : autoRoutingEscalationItem === null
-      ? props.bannerItems
-      : [...props.bannerItems, autoRoutingEscalationItem];
 
   const insertComposerText = (
     text: string,
@@ -2434,6 +2437,31 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     );
   };
   const insertComposerTextStable = useStableCallback(insertComposerText);
+  // Sends the handoff request straight away, unless a half-written draft would go with it.
+  function sendHandoffRequest() {
+    const hasDraft = promptRef.current.trim().length > 0;
+    if (!insertComposerText(HANDOFF_REQUEST, "end") || hasDraft) return;
+    submitComposer();
+  }
+  const longThreadItem = useLongThreadNoticeItem({
+    threadKey: routeKind === "server" ? `${environmentId}:${routeThreadRef.threadId}` : null,
+    contextWindow: activeContextWindow,
+    busy: phase === "running" || isSendBusy,
+    onAskForHandoff: () => sendHandoffRequest(),
+    onNewThread: onNewThreadInProject,
+  });
+  // An open question owns the space above the composer. Only a machine problem,
+  // which is why an answer could not go through, stays beside it.
+  const shelfItems = hasBlockingComposerTopDrawer
+    ? props.bannerItems.filter(
+        (item) =>
+          item.group === "environment" && (item.variant === "error" || item.variant === "warning"),
+      )
+    : [
+        ...props.bannerItems,
+        ...(autoRoutingEscalationItem === null ? [] : [autoRoutingEscalationItem]),
+        ...(longThreadItem === null ? [] : [longThreadItem]),
+      ];
 
   const insertAttachmentReferences = (
     references: ReadonlyArray<ComposerContextReference>,

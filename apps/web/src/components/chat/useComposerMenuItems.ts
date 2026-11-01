@@ -222,6 +222,13 @@ export function useComposerMenuItems({
           label: "/model",
           description: "Switch response model for this thread",
         },
+        {
+          id: "slash:handoff",
+          type: "slash-command",
+          command: "handoff",
+          label: "/handoff",
+          description: "Ask for a short summary to continue in a new thread",
+        },
         ...(planModeUiEnabled
           ? ([
               {
