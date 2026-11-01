@@ -55,6 +55,32 @@ First install only:
   The app adds its own launcher entry on first start. Keep the AppImage where it is so updates
   can replace it.
 
+### AI Innov launcher (Claude on Google Vertex)
+
+A second launcher, **T3 Code AI Innov**, opens the same installed app with Claude billed to a
+Google Vertex project instead of the personal Claude subscription. The normal **T3 Code
+Personal** launcher stays on the personal account. On Windows this is the desktop shortcut that
+runs `C:\Users\matth\Scripts\t3-ai-innov.ps1`; on Omarchy it is set up by a script.
+
+The Vertex project ID is not stored in this public repository; ask the owner for it.
+
+```sh
+yay -S --needed google-cloud-cli
+gcloud auth application-default login
+gcloud auth application-default set-quota-project <project-id>
+scripts/personal/install-ai-innov-launcher.sh <project-id>   # optional 2nd arg: region, default global
+```
+
+The script adds **T3 Code AI Innov** to the app launcher (`~/.local/share/applications`) and two
+commands in `~/.local/bin`: `t3-ai-innov` (the app) and `claude-ai-innov` (the Claude CLI). Both
+set `CLAUDE_CODE_USE_VERTEX=1`, `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION`, and unset any
+Anthropic key, token or base URL. Re-run it to change the project.
+
+The app runs one instance, and a running copy keeps the account it started with: quit T3 Code
+Personal from the tray before opening AI Innov, and the other way round. Only Opus 5.5 and
+Sonnet 5 are available on the project, so in **Settings → Auto routing** hide the models it
+lacks and give Sonnet 5 a tier (Settings → Auto routing → model tiers).
+
 Versions map official `x.y.z` to `x.y.(z*100+n)`: official `0.1.5` becomes `0.1.500`, and later
 fork-only builds on it become `0.1.501`, `0.1.502`, and so on.
 

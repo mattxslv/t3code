@@ -210,3 +210,4 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 ## Additional tips
 
 - Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
+- Personal fork setup (installing T3 Code Personal, the AI Innov / Vertex launcher on Windows or Omarchy) is in `docs/operations/personal-fork.md`.
