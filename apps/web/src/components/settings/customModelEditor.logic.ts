@@ -82,6 +82,9 @@ export const DESCRIPTOR_PRESETS_BY_KIND: Partial<
   [ProviderDriverKind.make("grok")]: [
     { id: "reasoningEffort", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
   ],
+  [ProviderDriverKind.make("copilot")]: [
+    { id: "reasoning_effort", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
+  ],
   [ProviderDriverKind.make("pi")]: [
     {
       id: "thinking",
