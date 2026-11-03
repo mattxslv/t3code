@@ -208,6 +208,7 @@ import { assertWebSearchOutput } from "./web_search/codex_output.ts";
 import { webSearchInput } from "./web_search/input.ts";
 import {
   ACP_REGISTRY_MODEL_SELECTION,
+  COPILOT_MODEL_SELECTION,
   CLAUDE_MODEL_SELECTION,
   CODEX_MODEL_SELECTION,
   CURSOR_MODEL_SELECTION,
@@ -658,6 +659,12 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
         assertOutput: assertSimpleOutput,
       },
       {
+        driver: ProviderDriverKind.make("copilot"),
+        transcriptFile: new URL("./simple/registry_transcript.ndjson", import.meta.url),
+        modelSelection: COPILOT_MODEL_SELECTION,
+        assertOutput: assertSimpleOutput,
+      },
+      {
         driver: ProviderDriverKind.make("opencode"),
         transcriptFile: new URL("./simple/opencode_transcript.ndjson", import.meta.url),
         modelSelection: OPENCODE_MODEL_SELECTION,
@@ -749,6 +756,16 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
         runtimePolicyOverride: READ_ONLY_NEVER_POLICY,
         assertOutput: assertToolCallReadOnlyCursorOutput,
       },
+      {
+        driver: ProviderDriverKind.make("copilot"),
+        transcriptFile: new URL(
+          "./tool_call_read_only/registry_transcript.ndjson",
+          import.meta.url,
+        ),
+        modelSelection: COPILOT_MODEL_SELECTION,
+        runtimePolicyOverride: READ_ONLY_NEVER_POLICY,
+        assertOutput: assertToolCallReadOnlyCursorOutput,
+      },
     ],
   },
   {
@@ -803,6 +820,16 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
           import.meta.url,
         ),
         modelSelection: ACP_REGISTRY_MODEL_SELECTION,
+        runtimePolicyOverride: READ_ONLY_ON_REQUEST_POLICY,
+        assertOutput: assertToolCallReadOnlyOnRequestOutput,
+      },
+      {
+        driver: ProviderDriverKind.make("copilot"),
+        transcriptFile: new URL(
+          "./tool_call_read_only_on_request/registry_transcript.ndjson",
+          import.meta.url,
+        ),
+        modelSelection: COPILOT_MODEL_SELECTION,
         runtimePolicyOverride: READ_ONLY_ON_REQUEST_POLICY,
         assertOutput: assertToolCallReadOnlyOnRequestOutput,
       },
@@ -1262,6 +1289,12 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
         assertOutput: assertMultiTurnOutput,
       },
       {
+        driver: ProviderDriverKind.make("copilot"),
+        transcriptFile: new URL("./multi_turn/registry_transcript.ndjson", import.meta.url),
+        modelSelection: COPILOT_MODEL_SELECTION,
+        assertOutput: assertMultiTurnOutput,
+      },
+      {
         driver: ProviderDriverKind.make("pi"),
         transcriptFile: new URL("./multi_turn/pi_transcript.ndjson", import.meta.url),
         modelSelection: PI_MODEL_SELECTION,
@@ -1416,6 +1449,12 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
         driver: ProviderDriverKind.make("acpRegistry"),
         transcriptFile: new URL("./queued_turn/registry_transcript.ndjson", import.meta.url),
         modelSelection: ACP_REGISTRY_MODEL_SELECTION,
+        assertOutput: assertQueuedTurnOutput,
+      },
+      {
+        driver: ProviderDriverKind.make("copilot"),
+        transcriptFile: new URL("./queued_turn/registry_transcript.ndjson", import.meta.url),
+        modelSelection: COPILOT_MODEL_SELECTION,
         assertOutput: assertQueuedTurnOutput,
       },
     ],
@@ -1601,6 +1640,13 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
         driver: ProviderDriverKind.make("acpRegistry"),
         transcriptFile: new URL("./turn_interrupt/registry_transcript.ndjson", import.meta.url),
         modelSelection: ACP_REGISTRY_MODEL_SELECTION,
+        runtimePolicyOverride: WORKSPACE_NEVER_POLICY,
+        assertOutput: assertTurnInterruptOutput,
+      },
+      {
+        driver: ProviderDriverKind.make("copilot"),
+        transcriptFile: new URL("./turn_interrupt/registry_transcript.ndjson", import.meta.url),
+        modelSelection: COPILOT_MODEL_SELECTION,
         runtimePolicyOverride: WORKSPACE_NEVER_POLICY,
         assertOutput: assertTurnInterruptOutput,
       },

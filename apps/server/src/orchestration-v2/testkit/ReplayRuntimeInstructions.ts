@@ -13,9 +13,11 @@ export function materializeReplayTranscriptRuntimeInstructions(
         ? "Grok"
         : runtime.driver === "acpRegistry"
           ? "acpRegistry"
-          : runtime.driver === "fx"
-            ? "fx"
-            : undefined;
+          : runtime.driver === "copilot"
+            ? "GitHub Copilot CLI"
+            : runtime.driver === "fx"
+              ? "fx"
+              : undefined;
   if (harness === undefined) return transcript;
   const instructions = buildRuntimeInstructions({ harness, model: runtime.model });
 
