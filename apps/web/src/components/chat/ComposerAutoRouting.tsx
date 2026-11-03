@@ -61,12 +61,12 @@ export function AutoRoutingPickerRow(props: {
     routing.mode === "pinned"
       ? "You picked this model, so Auto will not change it."
       : routing.mode === "manual"
-        ? "Let T3 pick a Claude or Codex model for each turn."
+        ? "Let T3 pick a Claude, Codex or Copilot model for each turn."
         : decision !== null && decision.kind !== "pinned"
           ? decision.summary
           : routing.settings.dryRun
             ? "Dry run: records its choice and sends with your model."
-            : "Picks a Claude or Codex model for each turn.";
+            : "Picks a Claude, Codex or Copilot model for each turn.";
 
   const rate = (feedback: "good" | "bad") => {
     if (decision === null) return;

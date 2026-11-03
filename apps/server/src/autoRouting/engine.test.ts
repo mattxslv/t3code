@@ -6,9 +6,11 @@ import { computeEscalationOffer, decideRoute } from "./engine.ts";
 import {
   CLAUDE,
   CODEX,
+  COPILOT,
   CURSOR,
   claudeProvider,
   codexProvider,
+  copilotProvider,
   cursorProvider,
   idleThread,
   NOW_MS,
@@ -22,6 +24,84 @@ const RUN_ID = RunId.make("run-1");
 const exhausted = (resetsAt = "2026-11-01T18:00:00.000Z") => ({
   checkedAt: "2026-11-01T11:59:00.000Z",
   windows: [{ id: "five_hour", kind: "session" as const, label: "5h", usedPercent: 100, resetsAt }],
+});
+
+describe("decideRoute with GitHub Copilot", () => {
+  const QUALITY_TASK =
+    "Design a complete distributed consensus protocol with end-to-end tests across packages";
+
+  it("treats Copilot as metered, so default settings never route to it", () => {
+    const decision = decideRoute(
+      routeInput({
+        text: QUALITY_TASK,
+        providers: [copilotProvider()],
+        requestedSelection: selection(COPILOT, "default"),
+      }),
+    );
+    expect(decision.kind).toBe("manual_fallback");
+    expect(decision.selection).toEqual(selection(COPILOT, "default"));
+    expect(
+      decision.candidates.find((candidate) => candidate.model === "claude-opus-5.5")?.excluded,
+    ).toBe("Uses metered API billing");
+  });
+
+  it("routes to Copilot only after metered providers are allowed", () => {
+    const decision = decideRoute(
+      routeInput({
+        text: QUALITY_TASK,
+        providers: [copilotProvider()],
+        requestedSelection: selection(COPILOT, "default"),
+        settingsPatch: { allowMeteredProviders: true },
+      }),
+    );
+    expect(decision.selection?.instanceId).toBe(COPILOT);
+    expect(decision.selection?.model).toBe("claude-opus-5.5");
+  });
+
+  it("never picks Copilot models whose tier is decided server-side", () => {
+    const decision = decideRoute(
+      routeInput({
+        providers: [copilotProvider()],
+        requestedSelection: selection(COPILOT, "default"),
+        settingsPatch: { allowMeteredProviders: true },
+      }),
+    );
+    for (const slug of ["default", "auto"]) {
+      expect(decision.candidates.find((candidate) => candidate.model === slug)?.excluded).toBe(
+        "Model without a capability tier",
+      );
+    }
+  });
+
+  it("stops routing to Copilot once its AI-credit allowance is used up", () => {
+    const decision = decideRoute(
+      routeInput({
+        text: QUALITY_TASK,
+        providers: [
+          claudeProvider(),
+          copilotProvider({
+            usageLimits: {
+              checkedAt: "2026-11-01T11:59:00.000Z",
+              windows: [
+                {
+                  id: "ai_credits",
+                  kind: "monthly",
+                  label: "AI credits",
+                  usedPercent: 100,
+                  resetsAt: "2026-12-01T00:00:00.000Z",
+                },
+              ],
+            },
+          }),
+        ],
+        settingsPatch: { allowMeteredProviders: true },
+      }),
+    );
+    expect(decision.selection?.instanceId).toBe(CLAUDE);
+    expect(
+      decision.candidates.find((candidate) => candidate.model === "claude-opus-5.5")?.excluded,
+    ).toBe("Usage limit reached");
+  });
 });
 
 describe("decideRoute", () => {

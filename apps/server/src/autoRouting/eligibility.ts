@@ -12,7 +12,7 @@ import { exhaustedUsageWindow } from "@t3tools/shared/usageLimits";
 import { type AutoRoutingModelProfile, resolveModelProfile } from "./modelCapabilities.ts";
 
 /** Auto only ever routes between these drivers. */
-const AUTO_ROUTING_DRIVERS: ReadonlySet<string> = new Set(["claudeAgent", "codex"]);
+const AUTO_ROUTING_DRIVERS: ReadonlySet<string> = new Set(["claudeAgent", "codex", "copilot"]);
 
 // Auth types that bill per token instead of drawing on a subscription.
 const METERED_AUTH_TYPES: ReadonlySet<string> = new Set([
@@ -24,6 +24,8 @@ const METERED_AUTH_TYPES: ReadonlySet<string> = new Set([
   "foundry",
   "azure",
   "customendpoint",
+  // Copilot draws on a per-cycle AI-credit allowance, and enterprise policy may bill overage.
+  "copilotaicredits",
 ]);
 
 export type AutoRoutingExclusion =
@@ -38,6 +40,7 @@ export type AutoRoutingExclusion =
   | "usage_exhausted"
   | "legacy_model"
   | "custom_model_unknown_capability"
+  | "unknown_capability"
   | "project_disabled";
 
 export const AUTO_ROUTING_EXCLUSION_LABELS: Record<AutoRoutingExclusion, string> = {
@@ -52,6 +55,7 @@ export const AUTO_ROUTING_EXCLUSION_LABELS: Record<AutoRoutingExclusion, string>
   usage_exhausted: "Usage limit reached",
   legacy_model: "Legacy model",
   custom_model_unknown_capability: "Custom model without a capability tier",
+  unknown_capability: "Model without a capability tier",
   project_disabled: "Disabled for this project",
 };
 
@@ -124,7 +128,7 @@ export function usageObservations(
     }));
 }
 
-/** Every Claude/Codex model with the reason it cannot be routed to, if any. */
+/** Every Claude, Codex or Copilot model with the reason it cannot be routed to, if any. */
 export function listAutoRoutingModels(input: {
   readonly providers: ReadonlyArray<ServerProvider>;
   readonly settings: AutoRoutingSettings;
@@ -150,9 +154,12 @@ export function listAutoRoutingModels(input: {
             ? "legacy_model"
             : model.isCustom && profile.tierSource !== "override"
               ? "custom_model_unknown_capability"
-              : exhaustedUsageWindow(provider, input.nowMs, model.slug) !== undefined
-                ? "usage_exhausted"
-                : null));
+              : // Copilot's "default" and "auto" pick a model server-side, so their tier is unknowable.
+                provider.driver === "copilot" && !profile.known
+                ? "unknown_capability"
+                : exhaustedUsageWindow(provider, input.nowMs, model.slug) !== undefined
+                  ? "usage_exhausted"
+                  : null));
       entries.push({ provider, model, profile, hidden, exclusion, maxUsedPercent });
     }
   }

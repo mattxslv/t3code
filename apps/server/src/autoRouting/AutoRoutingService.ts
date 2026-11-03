@@ -785,7 +785,9 @@ const make = Effect.gen(function* () {
     const issues: string[] = [];
     if (!settings.autoRouting.enabled) issues.push("Auto routing is turned off.");
     if (!models.some((entry) => entry.exclusion === null)) {
-      issues.push("No Claude or Codex model is eligible, so Auto uses your manual selection.");
+      issues.push(
+        "No Claude, Codex or Copilot model is eligible, so Auto uses your manual selection.",
+      );
     }
     if (models.some((entry) => entry.exclusion === "subscription_unverified")) {
       issues.push(

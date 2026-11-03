@@ -142,7 +142,7 @@ function fallbackReasonFor(
 ): AutoRoutingFallbackReason | null {
   const entry = entries.find((candidate) => entryMatchesSelection(candidate, selection));
   if (entry === undefined) {
-    // Only Claude/Codex instances are listed; a missing other-driver model is not a fallback.
+    // Only Claude, Codex and Copilot instances are listed; a missing other-driver model is not a fallback.
     const instanceListed = entries.some(
       (candidate) => candidate.provider.instanceId === selection.instanceId,
     );
@@ -166,7 +166,9 @@ function fallbackReasonFor(
 }
 
 function providerLabel(provider: ServerProvider): string {
-  return provider.displayName ?? (provider.driver === "codex" ? "Codex" : "Claude");
+  if (provider.displayName !== undefined) return provider.displayName;
+  if (provider.driver === "codex") return "Codex";
+  return provider.driver === "copilot" ? "GitHub Copilot" : "Claude";
 }
 
 function modelLabel(entry: AutoRoutingModelEntry): string {

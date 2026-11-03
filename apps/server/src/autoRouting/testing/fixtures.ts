@@ -16,6 +16,7 @@ export const NOW_MS = Date.parse("2026-11-01T12:00:00.000Z");
 export const CLAUDE = ProviderInstanceId.make("claudeAgent");
 export const CODEX = ProviderInstanceId.make("codex");
 export const CURSOR = ProviderInstanceId.make("cursor");
+export const COPILOT = ProviderInstanceId.make("copilot");
 
 const effort = (id: "effort" | "reasoningEffort") => ({
   optionDescriptors: [
@@ -95,6 +96,26 @@ export const cursorProvider = () =>
     instanceId: CURSOR,
     driver: ProviderDriverKind.make("cursor"),
     models: [model("composer-2", "Composer 2", "effort")],
+  });
+
+export const copilotProvider = (overrides: Partial<ServerProvider> = {}) =>
+  makeProvider({
+    instanceId: COPILOT,
+    driver: ProviderDriverKind.make("copilot"),
+    auth: {
+      status: "authenticated",
+      type: "copilot_ai_credits",
+      label: "Copilot enterprise",
+      email: "octocat_corp",
+    },
+    supportsTextGeneration: false,
+    models: [
+      { slug: "default", name: "Copilot CLI default", isCustom: false, capabilities: null },
+      { slug: "auto", name: "Copilot Auto", isCustom: false, capabilities: null },
+      model("claude-opus-5.5", "Claude Opus 5.5", "effort"),
+      model("gpt-5.6-luna", "GPT-5.6 Luna", "effort"),
+    ],
+    ...overrides,
   });
 
 const defaultProviders = () => [claudeProvider(), codexProvider(), cursorProvider()];

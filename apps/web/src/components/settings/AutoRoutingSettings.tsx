@@ -186,7 +186,7 @@ function SafetyRows(props: {
       {toggle(
         "allowMeteredProviders",
         "Allow metered providers",
-        "Let Auto use providers signed in with an API key or cloud billing. These can cost money per request.",
+        "Let Auto use providers signed in with an API key or cloud billing, and GitHub Copilot, which spends AI credits. These can cost money per request.",
       )}
       {toggle(
         "aiClassification",
@@ -567,7 +567,7 @@ export function AutoRoutingSettingsPanel() {
               serverScoped
               settingKeys={["autoRouting"]}
               {...searchableSetting("auto-routing-enabled")}
-              description="Adds Auto to the model picker. Auto picks a Claude or Codex model for each turn using your existing subscriptions; other providers are never used."
+              description="Adds Auto to the model picker. Auto picks a Claude or Codex model for each turn using your existing subscriptions. GitHub Copilot is used only when metered providers are allowed; other providers are never used."
               resetAction={
                 routing.enabled !== DEFAULT_AUTO_ROUTING_SETTINGS.enabled ? (
                   <SettingResetButton
