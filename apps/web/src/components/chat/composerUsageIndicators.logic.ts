@@ -65,14 +65,10 @@ export function composerUsageDailyBudget(
   return Math.floor(credits.remaining / daysLeft);
 }
 
-const compactCredits = new Intl.NumberFormat("en", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
 const fullCredits = new Intl.NumberFormat("en");
 
-export function formatCredits(value: number, compact = false): string {
-  return (compact ? compactCredits : fullCredits).format(value);
+export function formatCredits(value: number): string {
+  return fullCredits.format(value);
 }
 
 const COMPOSER_USAGE_POLL_MS = 15_000;

@@ -148,7 +148,7 @@ function UsageIndicator({
           >
             <span className={detailed ? "whitespace-nowrap text-xs tabular-nums" : "sr-only"}>
               {credits
-                ? `${formatCredits(credits.remaining, true)} left`
+                ? `${formatCredits(credits.remaining)} left`
                 : remaining === null
                   ? "Unavailable"
                   : `${remaining}%`}
