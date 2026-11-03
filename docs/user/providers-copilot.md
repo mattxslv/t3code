@@ -30,6 +30,8 @@ Copilot chat in T3 Code draws on the same AI-credit allowance as the Copilot CLI
 
 Auto treats Copilot as a metered provider. Auto picks Copilot only after you turn on **Allow metered providers** in **Settings → Auto routing**. Once the AI-credit bar reaches 100%, Auto stops picking Copilot until the allowance resets.
 
+When you select a Copilot model yourself, the thread stays on that model and Auto does not move it to another model or provider. To let Auto route that thread again, select a Claude or Codex model and choose **Return to Auto**.
+
 **Copilot CLI default** and **Copilot Auto** never take part in Auto, because their model is decided outside T3 Code. Models whose family Auto does not recognise, such as `gpt-5.3-codex`, are skipped unless you give them a tier in **Model tiers**. To keep a single Copilot model out of Auto, hide it there.
 
 ## Permission modes

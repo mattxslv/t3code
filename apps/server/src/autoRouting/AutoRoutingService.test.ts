@@ -24,7 +24,15 @@ import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as ServerSettingsService from "../serverSettings.ts";
 import { AutoRoutingService, layer as autoRoutingLayer } from "./AutoRoutingService.ts";
 import { AutoRoutingStore, layer as storeLayer } from "./AutoRoutingStore.ts";
-import { CLAUDE, CODEX, claudeProvider, codexProvider, selection } from "./testing/fixtures.ts";
+import {
+  CLAUDE,
+  CODEX,
+  COPILOT,
+  claudeProvider,
+  codexProvider,
+  copilotProvider,
+  selection,
+} from "./testing/fixtures.ts";
 
 type DispatchCommand = Extract<OrchestrationV2Command, { readonly type: "message.dispatch" }>;
 
@@ -198,6 +206,27 @@ describe("AutoRoutingService.resolveDispatch", () => {
       const state = yield* routing.getThreadState(THREAD);
       expect(state).toMatchObject({ mode: "pinned", latestDecision: { kind: "pinned" } });
     }).pipe(Effect.provide(makeLayer({ fixture: thread })));
+  });
+
+  it.effect("keeps an Auto turn on the Copilot model the user selected", () => {
+    const thread = fixture();
+    return Effect.gen(function* () {
+      const routing = yield* AutoRoutingService;
+      const copilot = selection(COPILOT, "claude-sonnet-5.5");
+      const resolved = yield* routing.resolveDispatch(
+        dispatchCommand({ text: "hello", modelSelection: copilot }),
+      );
+      expect(resolved.modelSelection).toEqual(copilot);
+      const state = yield* routing.getThreadState(THREAD);
+      expect(state).toMatchObject({ mode: "pinned", latestDecision: { kind: "pinned" } });
+    }).pipe(
+      Effect.provide(
+        makeLayer({
+          fixture: thread,
+          providers: [claudeProvider(), codexProvider(), copilotProvider()],
+        }),
+      ),
+    );
   });
 
   it.effect("ignores Auto requests while the feature is disabled on the server", () => {

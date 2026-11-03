@@ -430,8 +430,17 @@ const make = Effect.gen(function* () {
         ? null
         : buildThreadContext(threadLoad, previous, threadRecord, taskDecision);
 
+    const providers = yield* providerRegistry.getProviders;
+    // Copilot is a separate work seat, so Auto never moves a turn off a Copilot model the user chose.
+    const staysOnCopilot =
+      input.mode === "auto" &&
+      settings.autoRouting.enabled &&
+      providers.find((provider) => provider.instanceId === input.requestedSelection.instanceId)
+        ?.driver === "copilot";
+    const pinned = input.mode === "pinned" || staysOnCopilot;
+
     // Pins and a disabled feature never change the model; they are recorded so history stays honest.
-    if (input.mode === "pinned" || !settings.autoRouting.enabled) {
+    if (pinned || !settings.autoRouting.enabled) {
       const decision = yield* toDecision(
         {
           ...decideRoute({
@@ -445,13 +454,16 @@ const make = Effect.gen(function* () {
             requestedSelection: input.requestedSelection,
           }),
           selection: input.requestedSelection,
-          reasonCodes: [input.mode === "pinned" ? "manual_pin" : "auto_disabled"],
-          summary:
-            input.mode === "pinned" ? "Pinned by you" : "Auto routing is off; using your selection",
+          reasonCodes: [pinned ? "manual_pin" : "auto_disabled"],
+          summary: staysOnCopilot
+            ? "Staying on your GitHub Copilot model"
+            : pinned
+              ? "Pinned by you"
+              : "Auto routing is off; using your selection",
           candidates: [],
           usage: [],
         },
-        { ...meta, projectId, kind: input.mode === "pinned" ? "pinned" : "manual_fallback" },
+        { ...meta, projectId, kind: pinned ? "pinned" : "manual_fallback" },
       );
       yield* recordDecision(settings, decision);
       if (input.threadId !== null) yield* updateThreadRecord(input.threadId, decision);

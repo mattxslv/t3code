@@ -567,7 +567,7 @@ export function AutoRoutingSettingsPanel() {
               serverScoped
               settingKeys={["autoRouting"]}
               {...searchableSetting("auto-routing-enabled")}
-              description="Adds Auto to the model picker. Auto picks a Claude or Codex model for each turn using your existing subscriptions. GitHub Copilot is used only when metered providers are allowed; other providers are never used."
+              description="Adds Auto to the model picker. Auto picks a Claude or Codex model for each turn using your existing subscriptions. GitHub Copilot is used only when metered providers are allowed, and a Copilot model you select stays selected; other providers are never used."
               resetAction={
                 routing.enabled !== DEFAULT_AUTO_ROUTING_SETTINGS.enabled ? (
                   <SettingResetButton
