@@ -21,6 +21,7 @@ import { ComposerControl } from "./ComposerControl";
 import {
   COMPOSER_USAGE_DRIVERS,
   composerUsageCredits,
+  composerUsagePreciseRemaining,
   composerUsageDailyBudget,
   composerUsagePollDue,
   composerUsageProbeStale,
@@ -147,8 +148,8 @@ function UsageIndicator({
             data-composer-usage-provider={driver}
           >
             <span className={detailed ? "whitespace-nowrap text-xs tabular-nums" : "sr-only"}>
-              {credits
-                ? `${formatCredits(credits.remaining)} left`
+              {credits && session
+                ? `${composerUsagePreciseRemaining(session)}%`
                 : remaining === null
                   ? "Unavailable"
                   : `${remaining}%`}
@@ -182,7 +183,13 @@ function UsageIndicator({
               ) : null}
               {detailed && (remaining !== 100 || Number.isFinite(resetAt)) ? (
                 <span className="absolute inset-y-0 right-0 flex items-center gap-1 px-1.5 text-3xs text-foreground tabular-nums">
-                  <span>↻</span> {resetCountdown}
+                  {credits ? (
+                    `${formatCredits(credits.remaining)} left`
+                  ) : (
+                    <>
+                      <span>↻</span> {resetCountdown}
+                    </>
+                  )}
                 </span>
               ) : null}
             </span>

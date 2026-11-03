@@ -53,6 +53,12 @@ export function composerUsageCredits(
   };
 }
 
+/** Remaining share to one decimal (98.9), matching how GitHub reports AI credits. */
+export function composerUsagePreciseRemaining(window: ServerProviderUsageWindow): string {
+  const percent = 100 - Math.max(0, Math.min(100, window.usedPercent));
+  return String(Math.round(percent * 10) / 10);
+}
+
 /** Even daily spend that makes the remaining credits last until the reset. */
 export function composerUsageDailyBudget(
   window: ServerProviderUsageWindow | undefined,

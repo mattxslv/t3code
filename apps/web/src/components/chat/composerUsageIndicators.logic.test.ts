@@ -5,6 +5,7 @@ import {
   composerUsageCredits,
   composerUsageDailyBudget,
   composerUsagePollDue,
+  composerUsagePreciseRemaining,
   composerUsageProbeStale,
   composerUsagePrimaryWindow,
   composerUsageWindow,
@@ -87,6 +88,8 @@ describe("composer usage indicators", () => {
       limitCount: 20_000,
     };
     expect(composerUsageCredits(credits)).toEqual({ remaining: 14_999, limit: 20_000 });
+    expect(composerUsagePreciseRemaining(window("ai_credits", "monthly", 1.1))).toBe("98.9");
+    expect(composerUsagePreciseRemaining(window("ai_credits", "monthly", 0))).toBe("100");
     expect(composerUsageDailyBudget(credits, now)).toBe(1_499);
     expect(composerUsageCredits(window("primary", "session"))).toBeNull();
     expect(
