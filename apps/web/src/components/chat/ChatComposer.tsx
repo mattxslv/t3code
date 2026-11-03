@@ -3623,7 +3623,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       {composerControls}
                     </div>
                   )}
-                  <ComposerUsageIndicators selectedProvider={selectedProvider} />
+                  <ComposerUsageIndicators
+                    selectedProvider={selectedProvider}
+                    turnRunning={phase === "running"}
+                  />
                   {classicControls ? composerAttachButton : null}
                   <ComposerFooterPrimaryActions
                     compact={isComposerPrimaryActionsCompact}

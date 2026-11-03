@@ -75,6 +75,25 @@ export function formatCredits(value: number, compact = false): string {
   return (compact ? compactCredits : fullCredits).format(value);
 }
 
+const COMPOSER_USAGE_POLL_MS = 15_000;
+const COMPOSER_USAGE_FAILED_POLL_MS = 60_000;
+
+/** Polls often while probes succeed, and eases off so a rate limit is not hit again every tick. */
+export function composerUsagePollDue(input: {
+  readonly now: number;
+  readonly lastPollAt: number;
+  readonly probeFailed: boolean;
+}): boolean {
+  return (
+    input.now - input.lastPollAt >=
+    (input.probeFailed ? COMPOSER_USAGE_FAILED_POLL_MS : COMPOSER_USAGE_POLL_MS)
+  );
+}
+
+export function composerUsageProbeStale(checkedAt: string, now: number): boolean {
+  return now - Date.parse(checkedAt) > 45_000;
+}
+
 export function composerUsageStale(account: LimitAccount, now: number): boolean {
   const checkedAt = Date.parse(account.limits.checkedAt);
   return (

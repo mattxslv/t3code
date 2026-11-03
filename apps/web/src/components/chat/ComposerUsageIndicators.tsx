@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { memo, useEffect, useEffectEvent } from "react";
+import { memo, useEffect, useEffectEvent, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { refreshUsageLimits } from "@t3tools/client-runtime/state/usage";
 import {
@@ -22,6 +22,8 @@ import {
   COMPOSER_USAGE_DRIVERS,
   composerUsageCredits,
   composerUsageDailyBudget,
+  composerUsagePollDue,
+  composerUsageProbeStale,
   composerUsagePrimaryWindow,
   composerUsageWindow,
   composerUsageStale,
@@ -197,8 +199,10 @@ function UsageIndicator({
 
 export const ComposerUsageIndicators = memo(function ComposerUsageIndicators({
   selectedProvider,
+  turnRunning,
 }: {
   selectedProvider: ProviderDriverKind;
+  turnRunning: boolean;
 }) {
   const accounts = useAtomValue(composerUsageAccountsAtom);
   const presentations = useAtomValue(environmentPresentations.presentationsWithProvidersAtom);
@@ -242,6 +246,60 @@ export const ComposerUsageIndicators = memo(function ComposerUsageIndicators({
       document.removeEventListener("visibilitychange", autoRefresh);
     };
   }, [preferences.enabled, connectedKey]);
+  // Only the bars on screen are polled, one round at a time, so a slow probe never stacks up.
+  const pollInFlight = useRef(false);
+  const lastPollAt = useRef(0);
+  const pollShownUsage = useEffectEvent(() => {
+    if (!preferences.enabled || document.hidden || pollInFlight.current) return;
+    const shownDrivers: ReadonlyArray<string> = preferences.selectedOnly
+      ? [selectedProvider]
+      : COMPOSER_USAGE_DRIVERS;
+    const pollAt = Date.now();
+    // A failed probe keeps the last good bars, so a stale check time is the sign of a rate limit.
+    const probeFailed = accounts.some(
+      (account) =>
+        shownDrivers.includes(account.driver) &&
+        (account.limits.unavailable?.reason === "probeFailed" ||
+          composerUsageProbeStale(account.limits.checkedAt, pollAt)),
+    );
+    if (!composerUsagePollDue({ now: pollAt, lastPollAt: lastPollAt.current, probeFailed })) return;
+    const refreshes = [...presentations].flatMap(([environmentId, presentation]) =>
+      presentation.connection.phase === "connected"
+        ? (presentation.serverConfig?.providers ?? [])
+            .filter(
+              (provider) =>
+                provider.enabled &&
+                isComposerUsageDriver(provider.driver) &&
+                shownDrivers.includes(provider.driver),
+            )
+            .map((provider) =>
+              refreshProviders({ environmentId, input: { instanceId: provider.instanceId } }),
+            )
+        : [],
+    );
+    if (refreshes.length === 0) return;
+    pollInFlight.current = true;
+    lastPollAt.current = pollAt;
+    void Promise.allSettled(refreshes).finally(() => {
+      pollInFlight.current = false;
+    });
+  });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- usage changes outside the app, so the bars poll the server while they are visible
+  useEffect(() => {
+    if (!preferences.enabled || connectedKey === "") return;
+    const timer = globalThis.setInterval(pollShownUsage, 1_000);
+    return () => globalThis.clearInterval(timer);
+  }, [preferences.enabled, connectedKey]);
+  // A finished turn is when the numbers most likely moved, so it does not wait for the next tick.
+  const turnWasRunning = useRef(turnRunning);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- a finished turn spends usage held by the provider, outside React
+  useEffect(() => {
+    if (turnWasRunning.current && !turnRunning) {
+      lastPollAt.current = 0;
+      pollShownUsage();
+    }
+    turnWasRunning.current = turnRunning;
+  }, [turnRunning]);
   if (
     !preferences.enabled ||
     (preferences.selectedOnly && !isComposerUsageDriver(selectedProvider))

@@ -346,14 +346,14 @@ export function ComposerControlsBar(props: {
   ) : (
     <>
       {composerModelPicker}
-      {accountSwitch === null ? null : (
-        <ComposerAccountChip accountSwitch={accountSwitch} size={controlSize} />
-      )}
       <AutoRoutingAiClassificationChip
         routing={autoRouting}
         environmentId={environmentId}
         size={controlSize}
       />
+      {accountSwitch === null ? null : (
+        <ComposerAccountChip accountSwitch={accountSwitch} size={controlSize} />
+      )}
       {classic && traitsInput ? (
         <TraitsPicker {...traitsInput} size={controlSize} hidden={composerControlsHidden} />
       ) : null}

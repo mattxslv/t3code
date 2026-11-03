@@ -4,6 +4,8 @@ import { remainingPercent, type LimitAccount } from "@t3tools/shared/usageLimits
 import {
   composerUsageCredits,
   composerUsageDailyBudget,
+  composerUsagePollDue,
+  composerUsageProbeStale,
   composerUsagePrimaryWindow,
   composerUsageWindow,
   composerUsageStale,
@@ -123,5 +125,24 @@ describe("composer usage indicators", () => {
     };
     expect(composerUsageStale(expired, now)).toBe(true);
     expect(remainingPercent(composerUsageWindow(expired, "session")!)).toBe(0);
+  });
+});
+
+describe("composerUsagePollDue", () => {
+  it("treats a check time over 45 seconds old as a failing probe", () => {
+    const checkedAt = "2026-11-03T08:00:00.000Z";
+    const checked = Date.parse(checkedAt);
+    expect(composerUsageProbeStale(checkedAt, checked + 45_000)).toBe(false);
+    expect(composerUsageProbeStale(checkedAt, checked + 45_001)).toBe(true);
+  });
+
+  it("polls every 15 seconds while usage probes succeed", () => {
+    expect(composerUsagePollDue({ now: 14_999, lastPollAt: 0, probeFailed: false })).toBe(false);
+    expect(composerUsagePollDue({ now: 15_000, lastPollAt: 0, probeFailed: false })).toBe(true);
+  });
+
+  it("eases off to once a minute after a failed probe", () => {
+    expect(composerUsagePollDue({ now: 59_999, lastPollAt: 0, probeFailed: true })).toBe(false);
+    expect(composerUsagePollDue({ now: 60_000, lastPollAt: 0, probeFailed: true })).toBe(true);
   });
 });
