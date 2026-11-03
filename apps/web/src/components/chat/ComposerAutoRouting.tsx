@@ -5,6 +5,7 @@ import {
   type ThreadId,
 } from "@t3tools/contracts";
 import {
+  BriefcaseIcon,
   RouteIcon,
   SparklesIcon,
   ThumbsDownIcon,
@@ -12,6 +13,7 @@ import {
   TrendingUpIcon,
 } from "lucide-react";
 
+import type { ComposerAccount } from "../../autoRoutingStore";
 import { useUpdateEnvironmentSettings } from "../../hooks/useSettings";
 import { randomUUID } from "../../lib/utils";
 import { serverEnvironment } from "../../state/server";
@@ -19,6 +21,7 @@ import { useEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
+import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
 import { ComposerControl, ComposerControlIcon, type ComposerControlSize } from "./ComposerControl";
@@ -48,25 +51,96 @@ export function AutoRoutingTriggerIcon() {
   return <RouteIcon aria-hidden="true" className="size-4 text-primary" />;
 }
 
+const ACCOUNT_LABELS: Record<ComposerAccount, string> = { work: "Work", personal: "Personal" };
+
+/** Null while only one side is usable, so there is nothing to switch between. */
+export interface ComposerAccountSwitch {
+  readonly account: ComposerAccount;
+  readonly creditsUsedUp: boolean;
+  readonly onSwitch: (account: ComposerAccount) => void;
+}
+
+/** Sits above the Auto row: Work uses Copilot's credits, Personal uses Claude and Codex. */
+export function ComposerAccountRow(props: { readonly accountSwitch: ComposerAccountSwitch }) {
+  const { account, creditsUsedUp, onSwitch } = props.accountSwitch;
+  const description =
+    account === "personal"
+      ? "Using your Claude and Codex subscriptions."
+      : creditsUsedUp
+        ? "AI credits are used up. Switch to Personal to keep going."
+        : "Using GitHub Copilot's AI credits.";
+  return (
+    <div className="flex items-center gap-2 border-t border-border/70 px-3 py-2 text-xs">
+      <BriefcaseIcon className="size-3.5 shrink-0 text-muted-foreground" />
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <span className="font-medium text-foreground">Account</span>
+        <span className="truncate text-muted-foreground">{description}</span>
+      </div>
+      <ToggleGroup
+        aria-label="Account"
+        variant="segmented"
+        value={[account]}
+        onValueChange={(next) => {
+          const value = next[0];
+          if (value === "work" || value === "personal") onSwitch(value);
+        }}
+      >
+        <Toggle value="work">{ACCOUNT_LABELS.work}</Toggle>
+        <Toggle value="personal">{ACCOUNT_LABELS.personal}</Toggle>
+      </ToggleGroup>
+    </div>
+  );
+}
+
+/** Names the account beside the model, and flips it in one click. */
+export function ComposerAccountChip(props: {
+  readonly accountSwitch: ComposerAccountSwitch;
+  readonly size: ComposerControlSize;
+}) {
+  const { account, onSwitch } = props.accountSwitch;
+  const other = account === "work" ? "personal" : "work";
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <ComposerControl
+            type="button"
+            size={props.size}
+            className="shrink-0"
+            aria-label={`Account: ${ACCOUNT_LABELS[account]}. Switch to ${ACCOUNT_LABELS[other]}`}
+            onClick={() => onSwitch(other)}
+          />
+        }
+      >
+        <ComposerControlIcon icon={BriefcaseIcon} size={props.size} />
+        <span data-composer-control-label>{ACCOUNT_LABELS[account]}</span>
+      </TooltipTrigger>
+      <TooltipPopup side="top">Switch to {ACCOUNT_LABELS[other]}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
 /** The Auto row inside the model picker: turn Auto on or off, see why, rate the choice. */
 export function AutoRoutingPickerRow(props: {
   readonly routing: ComposerAutoRouting;
   readonly environmentId: EnvironmentId;
+  readonly account: ComposerAccount;
 }) {
   const { routing } = props;
   const submitFeedback = useAtomCommand(serverEnvironment.autoRoutingSubmitFeedback);
   if (!routing.available) return null;
+  const routesBetween = props.account === "work" ? "Copilot" : "Claude or Codex";
   const decision = routing.state?.latestDecision ?? null;
   const description =
     routing.mode === "pinned"
       ? "You picked this model, so Auto will not change it."
       : routing.mode === "manual"
-        ? "Let T3 pick a Claude, Codex or Copilot model for each turn."
+        ? `Let T3 pick a ${routesBetween} model for each turn.`
         : decision !== null && decision.kind !== "pinned"
           ? decision.summary
           : routing.settings.dryRun
             ? "Dry run: records its choice and sends with your model."
-            : "Picks a Claude, Codex or Copilot model for each turn.";
+            : `Picks a ${routesBetween} model for each turn.`;
 
   const rate = (feedback: "good" | "bad") => {
     if (decision === null) return;

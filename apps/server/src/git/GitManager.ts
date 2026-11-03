@@ -42,6 +42,7 @@ import {
   type ThreadPullRequestKey,
   type VcsCreateWorktreeInput,
   type VcsCreateWorktreeResult,
+  isCopilotModelSelection,
 } from "@t3tools/contracts";
 import {
   hasProjectSettingsOverrides,
@@ -3078,23 +3079,36 @@ export const make = Effect.gen(function* () {
         let commitMessageForStep = input.commitMessage;
         let preResolvedCommitSuggestion: CommitAndBranchSuggestion | undefined = undefined;
 
+        const threadSelection =
+          input.threadId === undefined
+            ? null
+            : yield* threads.getThreadShell(input.threadId).pipe(
+                Effect.map((thread) => thread?.modelSelection ?? null),
+                Effect.orElseSucceed(() => null),
+              );
         const textGenerationSettings = yield* projectSettingsFor(input).pipe(
           Effect.flatMap(({ settings, projectId }) =>
-            settings.sourceControlWriterModelSelection === null
-              ? Effect.succeed({
-                  modelSelection: settings.textGenerationModelSelection,
+            threadSelection !== null && isCopilotModelSelection(settings, threadSelection)
+              ? // Copilot declines this, so a Work thread's diff never reaches another provider.
+                Effect.succeed({
+                  modelSelection: threadSelection,
                   style: settings.sourceControlWritingStyle,
                 })
-              : providerRegistry.getProviders.pipe(
-                  Effect.map((providers) => ({
-                    modelSelection: ServerSettings.resolveSourceControlWriterModelSelection(
-                      settings,
-                      providers,
-                      projectId,
-                    ),
+              : settings.sourceControlWriterModelSelection === null
+                ? Effect.succeed({
+                    modelSelection: settings.textGenerationModelSelection,
                     style: settings.sourceControlWritingStyle,
-                  })),
-                ),
+                  })
+                : providerRegistry.getProviders.pipe(
+                    Effect.map((providers) => ({
+                      modelSelection: ServerSettings.resolveSourceControlWriterModelSelection(
+                        settings,
+                        providers,
+                        projectId,
+                      ),
+                      style: settings.sourceControlWritingStyle,
+                    })),
+                  ),
           ),
           Effect.mapError(
             (cause) =>

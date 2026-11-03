@@ -49,6 +49,7 @@ const adapter = {
 function makeHarness(
   options: {
     readonly generateTitle?: TextGeneration.TextGeneration["Service"]["generateThreadTitle"];
+    readonly threadInstanceDriver?: string;
   } = {},
 ) {
   const layerDatabase = SqlitePersistence.layerMemory;
@@ -58,7 +59,18 @@ function makeHarness(
     layerRegistry,
     { databaseLayer: layerDatabase, runEffectWorker: false },
   );
-  const layerServerSettings = ServerSettings.layerTest({});
+  const layerServerSettings = ServerSettings.layerTest(
+    options.threadInstanceDriver === undefined
+      ? {}
+      : {
+          providerInstances: {
+            [modelSelection.instanceId]: {
+              driver: ProviderDriverKind.make(options.threadInstanceDriver),
+              enabled: true,
+            },
+          },
+        },
+  );
   const layerThreadManagement = ThreadManagement.layer.pipe(
     Layer.provide(layerOrchestrator),
     Layer.provide(layerServerSettings),
@@ -382,6 +394,35 @@ describe("ThreadTitleRegenerationService", () => {
         const projection = yield* threads.getThreadProjection(threadId);
         assert.equal(projection.thread.title, "Seed title");
         assert.equal(projection.thread.titleRegeneration?.requestId, currentRequest);
+      }).pipe(Effect.provide(harness.layer));
+    }),
+  );
+
+  it.effect("keeps a Copilot thread's messages away from the title provider", () =>
+    Effect.gen(function* () {
+      const harness = makeHarness({
+        generateTitle: () => Effect.succeed({ title: "Should not land" }),
+        threadInstanceDriver: "copilot",
+      });
+      yield* Effect.gen(function* () {
+        const threads = yield* ThreadManagement.ThreadManagementService;
+        const titleRegeneration = yield* ThreadTitleRegeneration.ThreadTitleRegenerationService;
+        const threadId = yield* createThread({
+          command: "command:title:copilot:create",
+          thread: "thread:title:copilot",
+        });
+        yield* dispatchUserMessage({
+          command: "command:title:copilot:message",
+          threadId,
+          text: "Investigate the flaky login test",
+        });
+        const requestId = yield* armRegeneration({ command: "command:title:copilot:1", threadId });
+
+        yield* titleRegeneration.execute({ threadId, requestId, kind: { type: "regenerate" } });
+
+        assert.equal(harness.generateThreadTitle.mock.calls.length, 0);
+        const projection = yield* threads.getThreadProjection(threadId);
+        assert.equal(projection.thread.title, "Seed title");
       }).pipe(Effect.provide(harness.layer));
     }),
   );

@@ -4,6 +4,7 @@ import {
   CommandId,
   MessageId,
   ProjectId,
+  ProviderDriverKind,
   RunId,
   ThreadId,
   type ModelSelection,
@@ -13,6 +14,7 @@ import {
   type ServerProvider,
   type ServerSettings,
 } from "@t3tools/contracts";
+import type { ProviderTextGeneration } from "@t3tools/provider-core/server/textGeneration";
 import type { DeepPartial } from "@t3tools/shared/Struct";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -39,6 +41,8 @@ type DispatchCommand = Extract<OrchestrationV2Command, { readonly type: "message
 const THREAD = ThreadId.make("thread-auto");
 const PROJECT = ProjectId.make("project-auto");
 const SONNET = selection(CLAUDE, "claude-sonnet-5-5");
+const AMBIGUOUS_REQUEST =
+  "Can you take a look at how the sidebar items are rendered and make them feel nicer to use please";
 
 interface ThreadFixture {
   modelSelection: ModelSelection;
@@ -72,6 +76,7 @@ function makeLayer(input: {
   readonly settings?: DeepPartial<ServerSettings>;
   readonly providers?: ReadonlyArray<ServerProvider>;
   readonly brokenSettings?: boolean;
+  readonly classify?: NonNullable<ProviderTextGeneration["classifyRoutingTask"]>;
 }) {
   const { fixture } = input;
   const threads = Layer.mock(ThreadManagement.ThreadManagementService)({
@@ -96,7 +101,12 @@ function makeLayer(input: {
     getProviders: Effect.succeed(input.providers ?? [claudeProvider(), codexProvider()]),
   });
   const instances = Layer.mock(ProviderInstanceRegistry.ProviderInstanceRegistry)({
-    getInstance: () => Effect.undefined,
+    getInstance: () =>
+      Effect.succeed(
+        input.classify === undefined
+          ? undefined
+          : ({ textGeneration: { classifyRoutingTask: input.classify } } as never),
+      ),
   });
   const settings = input.brokenSettings
     ? Layer.mock(ServerSettingsService.ServerSettingsService)({
@@ -208,22 +218,34 @@ describe("AutoRoutingService.resolveDispatch", () => {
     }).pipe(Effect.provide(makeLayer({ fixture: thread })));
   });
 
-  it.effect("keeps an Auto turn on the Copilot model the user selected", () => {
-    const thread = fixture();
+  it.effect("routes a Copilot turn between Copilot models and classifies it on Copilot", () => {
+    const thread = fixture({ runs: [] });
+    const classifiedWith: Array<ModelSelection> = [];
+    const copilot = selection(COPILOT, "claude-opus-5.5");
     return Effect.gen(function* () {
       const routing = yield* AutoRoutingService;
-      const copilot = selection(COPILOT, "claude-sonnet-5.5");
       const resolved = yield* routing.resolveDispatch(
-        dispatchCommand({ text: "hello", modelSelection: copilot }),
+        dispatchCommand({ text: AMBIGUOUS_REQUEST, modelSelection: copilot }),
       );
-      expect(resolved.modelSelection).toEqual(copilot);
-      const state = yield* routing.getThreadState(THREAD);
-      expect(state).toMatchObject({ mode: "pinned", latestDecision: { kind: "pinned" } });
+      expect(resolved.modelSelection?.instanceId).toBe(COPILOT);
+      expect(resolved.modelSelection?.model).toBe("gpt-5.6-luna");
+      expect(classifiedWith).toEqual([selection(COPILOT, "gpt-5.6-luna")]);
     }).pipe(
       Effect.provide(
         makeLayer({
           fixture: thread,
+          settings: {
+            autoRouting: { enabled: true, aiClassification: true },
+            providerInstances: {
+              [COPILOT]: { driver: ProviderDriverKind.make("copilot"), enabled: true },
+            },
+          },
           providers: [claudeProvider(), codexProvider(), copilotProvider()],
+          classify: (input) =>
+            Effect.sync(() => {
+              classifiedWith.push(input.modelSelection);
+              return { complexity: "trivial" as const };
+            }),
         }),
       ),
     );

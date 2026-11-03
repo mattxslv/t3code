@@ -4,6 +4,7 @@ import type {
   AutoRoutingProfile,
   AutoRoutingRequest,
   AutoRoutingSettings,
+  ProviderInstanceId,
 } from "@t3tools/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -59,6 +60,40 @@ export function resolveComposerRoutingMode(input: {
 
 export function autoRoutingRequestFor(mode: ComposerRoutingMode): AutoRoutingRequest | undefined {
   return mode === "manual" ? undefined : { mode };
+}
+
+/** Which subscription a thread spends: Copilot's work seat, or personal Claude and Codex. */
+export type ComposerAccount = "work" | "personal";
+
+export function composerAccountFor(driver: string): ComposerAccount {
+  return driver === "copilot" ? "work" : "personal";
+}
+
+// Copilot's "default" and "auto" hide the real model, so they make poor starting points.
+const SERVER_CHOSEN_MODELS: ReadonlySet<string> = new Set(["default", "auto"]);
+
+/** The model a thread moves to when the Work / Personal switch is flipped. */
+export function composerAccountTarget(
+  entries: ReadonlyArray<{
+    readonly instanceId: ProviderInstanceId;
+    readonly driverKind: string;
+    readonly enabled: boolean;
+    readonly isAvailable: boolean;
+    readonly models: ReadonlyArray<{ readonly slug: string }>;
+  }>,
+  account: ComposerAccount,
+): { readonly instanceId: ProviderInstanceId; readonly model: string } | null {
+  for (const entry of entries) {
+    if (!entry.enabled || !entry.isAvailable) continue;
+    const eligible =
+      account === "work"
+        ? entry.driverKind === "copilot"
+        : entry.driverKind === "claudeAgent" || entry.driverKind === "codex";
+    if (!eligible) continue;
+    const model = entry.models.find((candidate) => !SERVER_CHOSEN_MODELS.has(candidate.slug));
+    if (model !== undefined) return { instanceId: entry.instanceId, model: model.slug };
+  }
+  return null;
 }
 
 export const AUTO_ROUTING_PROFILE_LABELS: Record<AutoRoutingProfile, string> = {

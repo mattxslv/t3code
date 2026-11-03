@@ -30,32 +30,29 @@ describe("decideRoute with GitHub Copilot", () => {
   const QUALITY_TASK =
     "Design a complete distributed consensus protocol with end-to-end tests across packages";
 
-  it("treats Copilot as metered, so default settings never route to it", () => {
-    const decision = decideRoute(
-      routeInput({
-        text: QUALITY_TASK,
-        providers: [copilotProvider()],
-        requestedSelection: selection(COPILOT, "default"),
-      }),
-    );
-    expect(decision.kind).toBe("manual_fallback");
-    expect(decision.selection).toEqual(selection(COPILOT, "default"));
-    expect(
-      decision.candidates.find((candidate) => candidate.model === "claude-opus-5.5")?.excluded,
-    ).toBe("Uses metered API billing");
+  it("keeps a Copilot request on Copilot and picks the model the task needs", () => {
+    const providers = [claudeProvider(), codexProvider(), copilotProvider()];
+    const requestedSelection = selection(COPILOT, "gpt-5.6-luna");
+    const hard = decideRoute(routeInput({ text: QUALITY_TASK, providers, requestedSelection }));
+    expect(hard.selection?.instanceId).toBe(COPILOT);
+    expect(hard.selection?.model).toBe("claude-opus-5.5");
+    const trivial = decideRoute(routeInput({ text: "hello", providers, requestedSelection }));
+    expect(trivial.selection?.instanceId).toBe(COPILOT);
+    expect(trivial.selection?.model).toBe("gpt-5.6-luna");
+    expect(hard.candidates.every((candidate) => candidate.instanceId === COPILOT)).toBe(true);
   });
 
-  it("routes to Copilot only after metered providers are allowed", () => {
+  it("never routes a Claude or Codex request to Copilot, even with metered providers allowed", () => {
     const decision = decideRoute(
       routeInput({
         text: QUALITY_TASK,
-        providers: [copilotProvider()],
-        requestedSelection: selection(COPILOT, "default"),
+        providers: [claudeProvider(), codexProvider(), copilotProvider()],
+        requestedSelection: selection(CLAUDE, "claude-sonnet-5-5"),
         settingsPatch: { allowMeteredProviders: true },
       }),
     );
-    expect(decision.selection?.instanceId).toBe(COPILOT);
-    expect(decision.selection?.model).toBe("claude-opus-5.5");
+    expect(decision.selection?.instanceId).not.toBe(COPILOT);
+    expect(decision.candidates.some((candidate) => candidate.instanceId === COPILOT)).toBe(false);
   });
 
   it("never picks Copilot models whose tier is decided server-side", () => {
@@ -73,7 +70,7 @@ describe("decideRoute with GitHub Copilot", () => {
     }
   });
 
-  it("stops routing to Copilot once its AI-credit allowance is used up", () => {
+  it("stays on the requested Copilot model when its AI credits are used up", () => {
     const decision = decideRoute(
       routeInput({
         text: QUALITY_TASK,
@@ -94,10 +91,11 @@ describe("decideRoute with GitHub Copilot", () => {
             },
           }),
         ],
-        settingsPatch: { allowMeteredProviders: true },
+        requestedSelection: selection(COPILOT, "claude-opus-5.5"),
       }),
     );
-    expect(decision.selection?.instanceId).toBe(CLAUDE);
+    expect(decision.kind).toBe("manual_fallback");
+    expect(decision.selection).toEqual(selection(COPILOT, "claude-opus-5.5"));
     expect(
       decision.candidates.find((candidate) => candidate.model === "claude-opus-5.5")?.excluded,
     ).toBe("Usage limit reached");

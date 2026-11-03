@@ -42,6 +42,7 @@ import { AutoRoutingStore, type AutoRoutingThreadRecord } from "./AutoRoutingSto
 import { classifyTask } from "./classifier.ts";
 import {
   AUTO_ROUTING_EXCLUSION_LABELS,
+  autoRoutingPoolFor,
   listAutoRoutingModels,
   usageObservations,
 } from "./eligibility.ts";
@@ -106,6 +107,8 @@ export class AutoRoutingService extends Context.Service<
 >()("t3/autoRouting/AutoRoutingService") {}
 
 const AI_CLASSIFICATION_TIMEOUT = Duration.seconds(10);
+// A one-shot Copilot CLI run measured about 9s on CLI 1.0.105.
+const COPILOT_AI_CLASSIFICATION_TIMEOUT = Duration.seconds(20);
 const THREAD_RECORD_FIELDS = [
   "runs",
   "runtimeRequests",
@@ -260,16 +263,20 @@ const make = Effect.gen(function* () {
       },
     });
     if (!shouldAskAiClassifier(local, input.text.length)) return null;
+    const pool = autoRoutingPoolFor(input.providers, input.requestedSelection);
     const classifier = listAutoRoutingModels({
       providers: input.providers,
       settings: input.settings,
       nowMs: input.nowMs,
+      pool,
       ...(input.instanceEnabledForProject === undefined
         ? {}
         : { instanceEnabledForProject: input.instanceEnabledForProject }),
     })
       .filter(
-        (entry) => entry.exclusion === null && entry.provider.supportsTextGeneration !== false,
+        (entry) =>
+          entry.exclusion === null &&
+          (pool === "work" || entry.provider.supportsTextGeneration !== false),
       )
       .toSorted((left, right) => left.profile.usageWeight - right.profile.usageWeight)[0];
     if (classifier === undefined) return "failed";
@@ -291,7 +298,9 @@ const make = Effect.gen(function* () {
         return { complexity: result.complexity };
       }),
     ).pipe(
-      Effect.timeoutOption(AI_CLASSIFICATION_TIMEOUT),
+      Effect.timeoutOption(
+        pool === "work" ? COPILOT_AI_CLASSIFICATION_TIMEOUT : AI_CLASSIFICATION_TIMEOUT,
+      ),
       Effect.map(Option.getOrElse(() => "failed" as const)),
       Effect.orElseSucceed(() => "failed" as const),
     );
@@ -430,14 +439,7 @@ const make = Effect.gen(function* () {
         ? null
         : buildThreadContext(threadLoad, previous, threadRecord, taskDecision);
 
-    const providers = yield* providerRegistry.getProviders;
-    // Copilot is a separate work seat, so Auto never moves a turn off a Copilot model the user chose.
-    const staysOnCopilot =
-      input.mode === "auto" &&
-      settings.autoRouting.enabled &&
-      providers.find((provider) => provider.instanceId === input.requestedSelection.instanceId)
-        ?.driver === "copilot";
-    const pinned = input.mode === "pinned" || staysOnCopilot;
+    const pinned = input.mode === "pinned";
 
     // Pins and a disabled feature never change the model; they are recorded so history stays honest.
     if (pinned || !settings.autoRouting.enabled) {
@@ -455,11 +457,7 @@ const make = Effect.gen(function* () {
           }),
           selection: input.requestedSelection,
           reasonCodes: [pinned ? "manual_pin" : "auto_disabled"],
-          summary: staysOnCopilot
-            ? "Staying on your GitHub Copilot model"
-            : pinned
-              ? "Pinned by you"
-              : "Auto routing is off; using your selection",
+          summary: pinned ? "Pinned by you" : "Auto routing is off; using your selection",
           candidates: [],
           usage: [],
         },

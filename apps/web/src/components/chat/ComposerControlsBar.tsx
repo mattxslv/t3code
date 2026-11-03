@@ -36,8 +36,15 @@ import {
   AutoRoutingPickerRow,
   autoRoutingTrigger,
   AutoRoutingTriggerIcon,
+  ComposerAccountChip,
+  ComposerAccountRow,
 } from "./ComposerAutoRouting";
 import type { ComposerAutoRouting } from "./useComposerAutoRouting";
+import {
+  type ComposerAccount,
+  composerAccountFor,
+  composerAccountTarget,
+} from "../../autoRoutingStore";
 
 /**
  * The composer footer controls: the model picker (which also holds effort, speed and
@@ -200,7 +207,16 @@ export function ComposerControlsBar(props: {
       ]
     : [];
   // Name the model the server routed to; the draft selection can lag behind it.
-  const routedSelection = autoRouting.state?.latestDecision?.selection ?? null;
+  const account = composerAccountFor(selectedProvider);
+  const decidedSelection = autoRouting.state?.latestDecision?.selection ?? null;
+  const decidedDriver = providerInstanceEntries.find(
+    (entry) => entry.instanceId === decidedSelection?.instanceId,
+  )?.driverKind;
+  // After a flip, the last decision belongs to the other account until the next turn.
+  const routedSelection =
+    decidedDriver !== undefined && composerAccountFor(decidedDriver) === account
+      ? decidedSelection
+      : null;
   const labelInstanceId = routedSelection?.instanceId ?? selectedInstanceId;
   const labelModel = routedSelection?.model ?? selectedModel;
   const pickerModel = modelOptionsByInstance
@@ -215,6 +231,24 @@ export function ComposerControlsBar(props: {
     if (autoRouting.mode === "auto") autoRouting.setMode("pinned");
     onProviderModelSelect(instanceId, model, options);
   };
+  const workTarget = composerAccountTarget(providerInstanceEntries, "work");
+  const personalTarget = composerAccountTarget(providerInstanceEntries, "personal");
+  const accountSwitch =
+    workTarget === null || personalTarget === null || lockedProvider !== null
+      ? null
+      : {
+          account,
+          creditsUsedUp:
+            providerInstanceEntries
+              .find((entry) => entry.instanceId === workTarget.instanceId)
+              ?.snapshot.usageLimits?.windows.some((window) => window.usedPercent >= 100) === true,
+          onSwitch: (next: ComposerAccount) => {
+            const target = next === "work" ? workTarget : personalTarget;
+            // A pin names one model; flipping asks Auto to choose on the new side.
+            if (autoRouting.mode === "pinned") autoRouting.setMode("auto");
+            onProviderModelSelect(target.instanceId, target.model);
+          },
+        };
   // Its own element, so typing (which rebuilds the controls around it) leaves it cached.
   const composerModelPicker = (
     <ComposerModelPicker
@@ -264,7 +298,12 @@ export function ComposerControlsBar(props: {
       effortColumn={<ComposerEffortColumn traits={traitsInput} />}
       footer={
         <>
-          <AutoRoutingPickerRow routing={autoRouting} environmentId={environmentId} />
+          {accountSwitch === null ? null : <ComposerAccountRow accountSwitch={accountSwitch} />}
+          <AutoRoutingPickerRow
+            routing={autoRouting}
+            environmentId={environmentId}
+            account={account}
+          />
           <AutoRoutingAiClassificationRow routing={autoRouting} environmentId={environmentId} />
           <ComposerPickerFooter
             traits={traitsInput}
@@ -307,6 +346,9 @@ export function ComposerControlsBar(props: {
   ) : (
     <>
       {composerModelPicker}
+      {accountSwitch === null ? null : (
+        <ComposerAccountChip accountSwitch={accountSwitch} size={controlSize} />
+      )}
       <AutoRoutingAiClassificationChip
         routing={autoRouting}
         environmentId={environmentId}

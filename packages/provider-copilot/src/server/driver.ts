@@ -1,4 +1,4 @@
-import { ProviderDriverKind, TextGenerationError } from "@t3tools/contracts";
+import { ProviderDriverKind } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -23,7 +23,6 @@ import {
   makeProviderSnapshotSettingsSource,
   type ProviderSnapshotSettings,
 } from "@t3tools/provider-core/server/snapshotSettings";
-import type { ProviderTextGeneration } from "@t3tools/provider-core/server/textGeneration";
 import { CopilotSettings } from "../settings.ts";
 import { CopilotAdapterV2Driver, type CopilotAdapterV2DriverEnv } from "./adapter.ts";
 import {
@@ -31,6 +30,7 @@ import {
   checkCopilotProviderStatus,
   COPILOT_DISPLAY_NAME,
 } from "./status.ts";
+import { makeCopilotTextGeneration } from "./textGeneration.ts";
 
 const DRIVER_KIND = ProviderDriverKind.make("copilot");
 const decodeCopilotSettings = Schema.decodeSync(CopilotSettings);
@@ -38,24 +38,6 @@ const MAINTENANCE = makeManualOnlyProviderMaintenanceCapabilities({
   provider: DRIVER_KIND,
   packageName: "@github/copilot",
 });
-
-// Background text generation (titles, commit messages) would spend AI credits without a prompt.
-const makeUnsupportedTextGeneration = (): ProviderTextGeneration => {
-  const unsupported = (operation: string) =>
-    Effect.fail(
-      new TextGenerationError({
-        operation,
-        detail: "GitHub Copilot instances do not provide application text generation.",
-      }),
-    );
-  return {
-    generateCommitMessage: () => unsupported("generateCommitMessage"),
-    generatePrContent: () => unsupported("generatePrContent"),
-    generateBranchName: () => unsupported("generateBranchName"),
-    generateThreadTitle: () => unsupported("generateThreadTitle"),
-    generateReviewGuide: () => unsupported("generateReviewGuide"),
-  };
-};
 
 export type CopilotDriverEnv =
   | CopilotAdapterV2DriverEnv
@@ -118,6 +100,8 @@ export const CopilotDriver: ProviderDriver<CopilotSettings, CopilotDriverEnv> = 
       ),
     );
 
+    const textGeneration = yield* makeCopilotTextGeneration(effectiveConfig, processEnv);
+
     const checkProvider = checkCopilotProviderStatus(
       effectiveConfig,
       processEnv,
@@ -159,7 +143,7 @@ export const CopilotDriver: ProviderDriver<CopilotSettings, CopilotDriverEnv> = 
       enabled,
       snapshot,
       orchestrationAdapter,
-      textGeneration: makeUnsupportedTextGeneration(),
+      textGeneration,
     } satisfies ProviderInstance;
   }),
 };

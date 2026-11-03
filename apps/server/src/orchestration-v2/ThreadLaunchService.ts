@@ -18,6 +18,7 @@ import {
   type ProviderInteractionMode,
   ProjectId,
   type RunId,
+  isCopilotModelSelection,
   type RuntimeMode,
   type ScheduledTaskId,
   ThreadId,
@@ -110,7 +111,7 @@ export interface ThreadLaunchInput {
 
 type PreparationInput = Pick<
   ThreadLaunchInput,
-  "commandId" | "projectId" | "workspaceStrategy" | "initialMessage"
+  "commandId" | "projectId" | "workspaceStrategy" | "initialMessage" | "modelSelection"
 > & {
   readonly reusedWorktree?: { readonly baseRef: string };
 };
@@ -343,8 +344,10 @@ const make = Effect.gen(function* () {
             yield* serverSettings.getSettings,
             input.projectId,
           ).settings;
-          const modelSelection =
-            settings.sourceControlWriterModelSelection === null
+          // Copilot declines this, which leaves the temporary branch name in place.
+          const modelSelection = isCopilotModelSelection(settings, input.modelSelection)
+            ? input.modelSelection
+            : settings.sourceControlWriterModelSelection === null
               ? settings.textGenerationModelSelection
               : ServerSettings.resolveSourceControlWriterModelSelection(
                   settings,
@@ -1122,6 +1125,7 @@ const make = Effect.gen(function* () {
       {
         commandId: input.commandId,
         projectId: thread.projectId,
+        modelSelection: thread.modelSelection,
         workspaceStrategy: reuse?.strategy ?? workspacePreparation,
         ...(reuse === null ? {} : { reusedWorktree: reuse.reusedWorktree }),
         ...(message === undefined

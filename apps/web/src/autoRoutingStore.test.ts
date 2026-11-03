@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { autoRoutingRequestFor, resolveComposerRoutingMode } from "./autoRoutingStore";
+import { ProviderInstanceId } from "@t3tools/contracts";
+
+import {
+  autoRoutingRequestFor,
+  composerAccountFor,
+  composerAccountTarget,
+  resolveComposerRoutingMode,
+} from "./autoRoutingStore";
 
 const enabled = { enabled: true, defaultMode: "manual" as const };
 
@@ -63,5 +70,35 @@ describe("resolveComposerRoutingMode", () => {
   it("sends no routing request for manual threads", () => {
     expect(autoRoutingRequestFor("manual")).toBeUndefined();
     expect(autoRoutingRequestFor("pinned")).toEqual({ mode: "pinned" });
+  });
+});
+
+describe("composerAccountTarget", () => {
+  const entry = (driverKind: string, slugs: ReadonlyArray<string>, enabled = true) => ({
+    instanceId: ProviderInstanceId.make(driverKind),
+    driverKind,
+    enabled,
+    isAvailable: true,
+    models: slugs.map((slug) => ({ slug })),
+  });
+  const entries = [
+    entry("cursor", ["composer-2"]),
+    entry("copilot", ["default", "auto", "gpt-5.6-luna"]),
+    entry("claudeAgent", ["claude-sonnet-5-5"]),
+  ];
+
+  it("moves Work to a real Copilot model and Personal to Claude or Codex", () => {
+    expect(composerAccountTarget(entries, "work")?.model).toBe("gpt-5.6-luna");
+    expect(composerAccountTarget(entries, "personal")?.model).toBe("claude-sonnet-5-5");
+  });
+
+  it("has nowhere to go when that side is turned off", () => {
+    expect(composerAccountTarget([entry("copilot", ["gpt-5.6-luna"], false)], "work")).toBeNull();
+    expect(composerAccountTarget([entry("cursor", ["composer-2"])], "personal")).toBeNull();
+  });
+
+  it("treats only Copilot as the work account", () => {
+    expect(composerAccountFor("copilot")).toBe("work");
+    expect(composerAccountFor("codex")).toBe("personal");
   });
 });

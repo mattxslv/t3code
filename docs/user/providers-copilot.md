@@ -24,13 +24,16 @@ Copilot chat in T3 Code draws on the same AI-credit allowance as the Copilot CLI
 
 - **Usage** shows an **AI credits** bar with the percentage GitHub reports for your allowance and the reset date. T3 Code never estimates credit counts itself. When GitHub reports no quota, the Usage page links to your [Copilot settings on GitHub](https://github.com/settings/copilot) instead.
 - Your organization may allow use past the allowance, billed to the organization. T3 Code does not change that setting.
-- Copilot never writes commit messages, pull request text, branch names or thread titles, and it never classifies requests for Auto. Those background requests would spend credits without a prompt from you.
+- Copilot never writes commit messages, pull request text, branch names or thread titles. Those background requests would spend credits without a prompt from you. On a Work thread, T3 Code does not send them to your other providers either, so write commit messages and pull request text yourself or switch the thread to Personal.
 
 ## Auto routing
 
-Auto treats Copilot as a metered provider. Auto picks Copilot only after you turn on **Allow metered providers** in **Settings → Auto routing**. Once the AI-credit bar reaches 100%, Auto stops picking Copilot until the allowance resets.
+The **Account** switch in the model picker keeps Copilot and your other subscriptions apart. It belongs to the thread, and you can flip it at any time, for example when your AI credits run out.
 
-When you select a Copilot model yourself, the thread stays on that model and Auto does not move it to another model or provider. To let Auto route that thread again, select a Claude or Codex model and choose **Return to Auto**.
+- **Work** uses Copilot. Auto picks a Copilot model for each turn, sizing unclear requests on the lightest Copilot model. Only your message is sent for that, and it spends a small amount of AI credits and can add a few seconds before the turn starts. T3 Code never moves a Work turn to Claude or Codex, even when the AI-credit bar reaches 100%.
+- **Personal** uses Claude and Codex, and Auto never picks Copilot.
+
+Selecting a model yourself moves the switch to that model's side and pins it. Choose **Return to Auto** to let Auto route again.
 
 **Copilot CLI default** and **Copilot Auto** never take part in Auto, because their model is decided outside T3 Code. Models whose family Auto does not recognise, such as `gpt-5.3-codex`, are skipped unless you give them a tier in **Model tiers**. To keep a single Copilot model out of Auto, hide it there.
 

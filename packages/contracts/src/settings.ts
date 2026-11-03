@@ -1446,6 +1446,15 @@ export const resolveProviderInstanceEnabled = (
   return instance.enabled ?? configEnabled ?? defaultEnabledForDriver(instance.driver);
 };
 
+/** Copilot is a separate work seat: background requests from its threads stay away from others. */
+export const isCopilotModelSelection = (
+  settings: Pick<ServerSettings, "providerInstances">,
+  selection: ModelSelection,
+): boolean =>
+  (Object.hasOwn(settings.providerInstances, selection.instanceId)
+    ? settings.providerInstances[selection.instanceId]?.driver
+    : selection.instanceId) === "copilot";
+
 export const resolveProjectProviderInstanceEnabled = (
   settings: Pick<ServerSettings, "providerInstances" | "projectSettingsOverrides">,
   projectId: ProjectId | null,

@@ -9,6 +9,7 @@ import {
   type RunId,
   type ServerSettingsError,
   type ThreadId,
+  isCopilotModelSelection,
 } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -160,6 +161,9 @@ const make = Effect.gen(function* () {
         yield* serverSettings.getSettings,
         projection.thread.projectId,
       ).settings;
+      if (isCopilotModelSelection(settings, projection.thread.modelSelection)) {
+        return { type: "complete" as const };
+      }
       const result = yield* textGeneration.generateThreadTitle({
         cwd: projection.thread.worktreePath ?? project.value.workspaceRoot,
         message: context.message,

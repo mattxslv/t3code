@@ -18,6 +18,7 @@ import { type Classification, classifyTask } from "./classifier.ts";
 import {
   AUTO_ROUTING_EXCLUSION_LABELS,
   type AutoRoutingModelEntry,
+  autoRoutingPoolFor,
   listAutoRoutingModels,
   modelRefMatches,
   usageObservations,
@@ -228,6 +229,7 @@ export function decideRoute(input: RouteInput): RouteDecision {
     providers: input.providers,
     settings,
     nowMs: input.nowMs,
+    pool: autoRoutingPoolFor(input.providers, input.requestedSelection),
     ...(input.instanceEnabledForProject === undefined
       ? {}
       : { instanceEnabledForProject: input.instanceEnabledForProject }),
@@ -492,6 +494,7 @@ export function computeEscalationOffer(input: {
     providers: input.providers,
     settings: input.settings,
     nowMs: input.nowMs,
+    pool: autoRoutingPoolFor(input.providers, input.runSelection),
     ...(input.instanceEnabledForProject === undefined
       ? {}
       : { instanceEnabledForProject: input.instanceEnabledForProject }),
