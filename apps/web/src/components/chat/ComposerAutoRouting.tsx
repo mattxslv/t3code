@@ -112,7 +112,6 @@ export function ComposerAccountChip(props: {
           />
         }
       >
-        <ComposerControlIcon icon={BriefcaseIcon} size={props.size} />
         <span data-composer-control-label>{ACCOUNT_LABELS[account]}</span>
       </TooltipTrigger>
       <TooltipPopup side="top">Switch to {ACCOUNT_LABELS[other]}</TooltipPopup>

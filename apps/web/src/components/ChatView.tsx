@@ -2466,6 +2466,12 @@ export default function ChatView(props: ChatViewProps) {
       item.type === "user_message" &&
       (item.text.trim().toLowerCase() !== "/compact" || item.attachments.length > 0),
   );
+  const autoRouting = useComposerAutoRouting({
+    environmentId,
+    threadId,
+    isServerThread,
+    threadStarted: isServerThread,
+  });
   const pendingHandoffSelection = composerSelectedModelSelection ?? activeThread?.modelSelection;
   const pendingHandoffSelectionUsable = providerInstanceEntries.some(
     (entry) =>
@@ -2473,9 +2479,10 @@ export default function ChatView(props: ChatViewProps) {
       entry.enabled &&
       entry.isAvailable,
   );
+  // Auto picks the model at send time, so the composer's selection promises no handoff.
   const pendingHandoff = resolvePendingHandoff(
     serverProjection,
-    pendingHandoffSelectionUsable ? pendingHandoffSelection : null,
+    pendingHandoffSelectionUsable && autoRouting.mode !== "auto" ? pendingHandoffSelection : null,
     providerStatuses,
   );
   const compactThreadUnavailable =
@@ -2907,12 +2914,6 @@ export default function ChatView(props: ChatViewProps) {
     activeProject,
     activeEnvironmentUnavailable,
     defaultRuntimeMode,
-  });
-  const autoRouting = useComposerAutoRouting({
-    environmentId,
-    threadId,
-    isServerThread,
-    threadStarted: isServerThread,
   });
   const { onSend } = useComposerSend({
     environmentId,
