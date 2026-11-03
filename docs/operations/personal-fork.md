@@ -81,6 +81,19 @@ Personal from the tray before opening AI Innov, and the other way round. Only Op
 Sonnet 5 are available on the project, so in **Settings → Auto routing** hide the models it
 lacks and give Sonnet 5 a tier (Settings → Auto routing → model tiers).
 
+### GitHub Copilot (company Copilot seat)
+
+GitHub Copilot is a provider inside the same app, so it needs no second launcher: it uses the
+Copilot CLI login on the machine and the seat's AI credits. On each machine, once:
+
+- **Windows:** `winget install GitHub.Copilot`, then `copilot login` in a terminal.
+- **Omarchy:** `mise use -g copilot`, then `copilot login`. `~/.local/bin/copilot-work` (and the
+  **Copilot Work** launcher entry) open the CLI on its own with the same login.
+
+Sign in with the company-managed GitHub account, then enable **GitHub Copilot** in
+**Settings → Providers** and pick it in the model picker. Auto uses Copilot only when **Allow
+metered providers** is on. Details: [GitHub Copilot](../user/providers-copilot.md).
+
 Versions map official `x.y.z` to `x.y.(z*100+n)`: official `0.1.5` becomes `0.1.500`, and later
 fork-only builds on it become `0.1.501`, `0.1.502`, and so on.
 
