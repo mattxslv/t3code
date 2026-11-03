@@ -107,19 +107,30 @@ export function copilotModelsFromCatalog(
   return models;
 }
 
-// GitHub has reported reset dates already in the past; such a date would make a used-up
-// allowance look reset to Auto, so only a future date is passed on.
-function futureResetIso(value: string | undefined, checkedAt: string): string | undefined {
-  if (value === undefined) return undefined;
-  const reset = DateTime.make(value);
+// GitHub resets the AI-credit allowance at 00:00 UTC on the 1st of each month, yet has reported
+// reset dates already in the past. Such a date would make a used-up allowance look reset to Auto,
+// so it falls back to the next documented monthly reset.
+function monthlyReset(
+  value: string | undefined,
+  checkedAt: string,
+): { readonly resetsAt: string; readonly windowDurationMins: number } | undefined {
   const checked = DateTime.make(checkedAt);
-  if (Option.isNone(reset) || Option.isNone(checked)) return undefined;
-  return DateTime.isGreaterThan(reset.value, checked.value)
-    ? DateTime.formatIso(reset.value)
-    : undefined;
+  if (Option.isNone(checked)) return undefined;
+  const reported = value === undefined ? Option.none() : DateTime.make(value);
+  const reset =
+    Option.isSome(reported) && DateTime.isGreaterThan(reported.value, checked.value)
+      ? reported.value
+      : DateTime.startOf(DateTime.add(checked.value, { months: 1 }), "month");
+  const cycleStart = DateTime.subtract(reset, { months: 1 });
+  return {
+    resetsAt: DateTime.formatIso(reset),
+    windowDurationMins: Math.round(
+      (DateTime.toEpochMillis(reset) - DateTime.toEpochMillis(cycleStart)) / 60_000,
+    ),
+  };
 }
 
-/** Reports GitHub's own percentage; credit counts are never estimated locally. */
+/** Reports GitHub's own percentage and credit counts; neither is estimated locally. */
 export function copilotUsageLimits(
   quota: CopilotQuotaSnapshot | undefined,
   checkedAt: string,
@@ -139,7 +150,7 @@ export function copilotUsageLimits(
   if (quota.isUnlimitedEntitlement || quota.entitlementRequests <= 0) {
     return { checkedAt, windows: [], externalUsage };
   }
-  const resetsAt = futureResetIso(quota.resetDate, checkedAt);
+  const reset = monthlyReset(quota.resetDate, checkedAt);
   return {
     checkedAt,
     windows: [
@@ -148,7 +159,9 @@ export function copilotUsageLimits(
         kind: "monthly",
         label: "AI credits",
         usedPercent: Math.min(100, Math.max(0, 100 - quota.remainingPercentage)),
-        ...(resetsAt === undefined ? {} : { resetsAt }),
+        ...reset,
+        usedCount: Math.max(0, quota.usedRequests),
+        limitCount: Math.round(quota.entitlementRequests),
       },
     ],
     externalUsage,

@@ -436,6 +436,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["limits subscription remaining allowance monitor account"],
   },
   {
+    id: "copilot-composer-usage-account",
+    title: "Copilot composer usage account",
+    to: "/settings/customizations",
+    searchTerms: ["limits ai credits github remaining allowance monitor account"],
+  },
+  {
     // Prefixed because the slider control already owns the `glass-opacity` id.
     id: "setting-glass-opacity",
     title: "Glass opacity",

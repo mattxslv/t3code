@@ -1,10 +1,19 @@
 import { useAtomValue } from "@effect/atom-react";
 import { composerUsageAccountsAtom } from "../../state/composerUsage";
-import { composerUsageAccountLabel } from "../chat/composerUsageIndicators.logic";
+import {
+  COMPOSER_USAGE_DRIVERS,
+  composerUsageAccountLabel,
+} from "../chat/composerUsageIndicators.logic";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { SettingsRow } from "./settingsLayout";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { searchableSetting } from "./settingsSearch";
+
+const SEARCH_IDS = {
+  codex: "codex-composer-usage-account",
+  claudeAgent: "claude-composer-usage-account",
+  copilot: "copilot-composer-usage-account",
+} as const;
 
 export function ComposerUsageSettings({ disabled = false }: { disabled?: boolean }) {
   const accounts = useAtomValue(composerUsageAccountsAtom);
@@ -12,16 +21,14 @@ export function ComposerUsageSettings({ disabled = false }: { disabled?: boolean
   const updateSettings = useUpdateScopedSettings();
   return (
     <>
-      {(["codex", "claudeAgent"] as const).map((driver) => {
+      {COMPOSER_USAGE_DRIVERS.map((driver) => {
         const candidates = accounts.filter((account) => account.driver === driver);
         const stored = selected[driver];
         const missing =
           stored !== undefined && !candidates.some((account) => account.key === stored);
         return (
           <SettingsRow
-            {...searchableSetting(
-              driver === "codex" ? "codex-composer-usage-account" : "claude-composer-usage-account",
-            )}
+            {...searchableSetting(SEARCH_IDS[driver])}
             key={driver}
             description="Automatic uses the only available account. Multiple accounts require a selection; allowances are never combined."
             control={

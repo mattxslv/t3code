@@ -359,6 +359,7 @@ export const WorkspaceLayout = Schema.Literals(["standard", "reversed"]);
 const ComposerUsageAccounts = Schema.Struct({
   codex: Schema.optionalKey(Schema.String),
   claudeAgent: Schema.optionalKey(Schema.String),
+  copilot: Schema.optionalKey(Schema.String),
 });
 
 export const ClientSettingsSchema = Schema.Struct({

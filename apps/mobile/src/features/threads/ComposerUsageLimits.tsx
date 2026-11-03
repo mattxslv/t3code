@@ -5,7 +5,11 @@ import { SymbolView } from "../../components/ui/AppSymbol";
 import { AppText as Text } from "../../components/ui/AppText";
 import { AccountLimits, ResetCredits } from "../usage/UsageLimitsSection";
 
-const DRIVER_LABEL: Partial<Record<string, string>> = { codex: "Codex", claudeAgent: "Claude" };
+const DRIVER_LABEL: Partial<Record<string, string>> = {
+  codex: "Codex",
+  claudeAgent: "Claude",
+  copilot: "Copilot",
+};
 
 export function ComposerUsageLimits({
   report,

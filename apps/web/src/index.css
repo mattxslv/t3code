@@ -123,6 +123,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --workspace-topbar-height: 52px;
   --composer-usage-codex: #a1a1aa;
   --composer-usage-claude: #563328;
+  --composer-usage-copilot: #0969da;
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
   --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
@@ -147,6 +148,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   @variant dark {
     --appearance-contrast-target: white;
     --composer-usage-codex: #5b5b5b;
+    --composer-usage-copilot: #4493f8;
     --app-scrollbar-thumb: rgb(255 255 255 / 8%);
     --app-scrollbar-thumb-hover: rgb(255 255 255 / 12%);
     --glass-blur: 16px;
@@ -180,6 +182,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 @theme inline {
   --color-composer-usage-codex: var(--composer-usage-codex);
   --color-composer-usage-claude: var(--composer-usage-claude);
+  --color-composer-usage-copilot: var(--composer-usage-copilot);
   /* Two steps below Tailwind's text-xs (12px) for dense UI: metadata rows,
      badges, counters, keyboard hints and diagnostics tables. 2xs is 11px,
      3xs is 10px. Provider icon overlays use 4xs (8px) and 5xs (7px) to fit

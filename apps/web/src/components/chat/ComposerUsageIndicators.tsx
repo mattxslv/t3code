@@ -19,26 +19,52 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerControl } from "./ComposerControl";
 import {
+  COMPOSER_USAGE_DRIVERS,
+  composerUsageCredits,
+  composerUsageDailyBudget,
+  composerUsagePrimaryWindow,
   composerUsageWindow,
   composerUsageStale,
+  formatCredits,
+  isComposerUsageDriver,
   selectComposerUsageAccount,
   type ComposerUsageDriver,
 } from "./composerUsageIndicators.logic";
 
-function WeeklyDetails({
+const DRIVER_NAMES: Record<ComposerUsageDriver, string> = {
+  codex: "Codex",
+  claudeAgent: "Claude",
+  copilot: "Copilot",
+};
+
+const DRIVER_BAR_CLASSES: Record<ComposerUsageDriver, string> = {
+  codex: "bg-composer-usage-codex",
+  claudeAgent: "bg-composer-usage-claude",
+  copilot: "bg-composer-usage-copilot",
+};
+
+function WindowDetails({
+  title,
   window,
   now,
 }: {
+  title: string;
   window: ServerProviderUsageWindow | undefined;
   now: number;
 }) {
   const remaining = window ? remainingPercent(window) : null;
+  const credits = composerUsageCredits(window);
+  const dailyBudget = composerUsageDailyBudget(window, now);
   return (
-    <div className="w-48 space-y-2 py-1 text-xs">
+    <div className="w-52 space-y-2 py-1 text-xs">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="font-medium">Weekly</span>
+        <span className="font-medium">{title}</span>
         <span className="tabular-nums">
-          {remaining === null ? "Unavailable" : `${remaining}% left`}
+          {credits
+            ? `${formatCredits(credits.remaining)} / ${formatCredits(credits.limit)} left`
+            : remaining === null
+              ? "Unavailable"
+              : `${remaining}% left`}
         </span>
       </div>
       {remaining !== null ? (
@@ -48,6 +74,9 @@ function WeeklyDetails({
             style={{ width: `${remaining}%` }}
           />
         </div>
+      ) : null}
+      {dailyBudget !== null ? (
+        <div className="tabular-nums">{formatCredits(dailyBudget)} a day lasts until the reset</div>
       ) : null}
       <div className="text-muted-foreground tabular-nums">
         {window ? (formatResetsIn(window, now) ?? "Reset not reported") : "Not reported"}
@@ -74,10 +103,16 @@ function UsageIndicator({
   detailed: boolean;
 }) {
   const navigate = useNavigate();
-  const name = driver === "codex" ? "Codex" : "Claude";
-  const session = composerUsageWindow(account, "session");
-  const weekly = composerUsageWindow(account, "weekly");
+  const name = DRIVER_NAMES[driver];
+  const windowName = driver === "copilot" ? "AI credits" : "session";
+  const session = composerUsagePrimaryWindow(account, driver);
+  // Copilot has no weekly window, so its tooltip details the monthly AI-credit allowance instead.
+  const details =
+    driver === "copilot"
+      ? { title: "AI credits", window: session }
+      : { title: "Weekly", window: composerUsageWindow(account, "weekly") };
   const remaining = session ? remainingPercent(session) : null;
+  const credits = composerUsageCredits(session);
   const resetLabel = session ? formatResetsIn(session, now) : null;
   // Where even spending would be: the share of the session window's time still left.
   const timeLeft = session ? paceRemainingPercent(session, now) : null;
@@ -105,12 +140,16 @@ function UsageIndicator({
         render={
           <ComposerControl
             size="xs"
-            aria-label={`${name}: ${remaining === null ? "session not reported" : `${remaining}% session remaining`}${timeLeft === null ? "" : `, ${timeLeft}% of the window left`}. ${resetLabel ?? "Reset not reported"}. ${status}. Open usage limits`}
+            aria-label={`${name}: ${remaining === null ? `${windowName} not reported` : `${remaining}% ${windowName} remaining`}${timeLeft === null ? "" : `, ${timeLeft}% of the window left`}. ${resetLabel ?? "Reset not reported"}. ${status}. Open usage limits`}
             onClick={() => void navigate({ to: "/usage", search: { metric: "limits" } })}
             data-composer-usage-provider={driver}
           >
             <span className={detailed ? "whitespace-nowrap text-xs tabular-nums" : "sr-only"}>
-              {remaining === null ? "Unavailable" : `${remaining}%`}
+              {credits
+                ? `${formatCredits(credits.remaining, true)} left`
+                : remaining === null
+                  ? "Unavailable"
+                  : `${remaining}%`}
             </span>
             <span
               aria-hidden
@@ -128,7 +167,7 @@ function UsageIndicator({
               {remaining !== null ? (
                 <span
                   className={`absolute inset-y-0 left-0 rounded-md transition-[width,opacity] ${
-                    driver === "codex" ? "bg-composer-usage-codex" : "bg-composer-usage-claude"
+                    DRIVER_BAR_CLASSES[driver]
                   } ${!connected || stale ? "opacity-50" : ""}`}
                   style={{ width: `${remaining}%` }}
                 />
@@ -150,7 +189,7 @@ function UsageIndicator({
         }
       />
       <TooltipPopup side="top">
-        <WeeklyDetails window={weekly} now={now} />
+        <WindowDetails title={details.title} window={details.window} now={now} />
       </TooltipPopup>
     </Tooltip>
   );
@@ -205,50 +244,55 @@ export const ComposerUsageIndicators = memo(function ComposerUsageIndicators({
   }, [preferences.enabled, connectedKey]);
   if (
     !preferences.enabled ||
-    (preferences.selectedOnly && selectedProvider !== "codex" && selectedProvider !== "claudeAgent")
+    (preferences.selectedOnly && !isComposerUsageDriver(selectedProvider))
   )
     return null;
   return (
     <div className="flex shrink-0 items-center gap-0.5" data-composer-usage-indicators>
-      {(["codex", "claudeAgent"] as const)
-        .filter((driver) => !preferences.selectedOnly || driver === selectedProvider)
-        .map((driver) => {
-          const selected = selectComposerUsageAccount(accounts, driver, selection[driver]);
-          const environmentIds =
-            selected.account?.environments.map((environment) => environment.environmentId) ?? [];
-          const connected =
-            environmentIds.length > 0
-              ? environmentIds.some((id) => presentations.get(id)?.connection.phase === "connected")
-              : [...presentations.values()].some(
-                  (presentation) =>
-                    presentation.connection.phase === "connected" &&
-                    (!selected.account ||
-                      presentation.serverConfig?.usageLimitSources?.some((source) =>
-                        source.accounts.some(
-                          (account) =>
-                            selected.account?.key ===
-                            `${source.id}:${account.id}${account.workspaceId ? `:${account.workspaceId}` : ""}`,
-                        ),
-                      )),
-                );
-          const loading =
-            !selected.account &&
-            [...presentations.values()].some(
-              (presentation) =>
-                presentation.connection.phase === "connected" && presentation.serverConfig === null,
-            );
-          return (
-            <UsageIndicator
-              key={driver}
-              driver={driver}
-              detailed={preferences.detailed}
-              {...selected}
-              connected={connected}
-              loading={loading}
-              now={now}
-            />
+      {COMPOSER_USAGE_DRIVERS.filter((driver) =>
+        preferences.selectedOnly
+          ? driver === selectedProvider
+          : // Copilot is opt-in, so it joins the always-on row only when selected or signed in.
+            driver !== "copilot" ||
+            driver === selectedProvider ||
+            accounts.some((account) => account.driver === "copilot"),
+      ).map((driver) => {
+        const selected = selectComposerUsageAccount(accounts, driver, selection[driver]);
+        const environmentIds =
+          selected.account?.environments.map((environment) => environment.environmentId) ?? [];
+        const connected =
+          environmentIds.length > 0
+            ? environmentIds.some((id) => presentations.get(id)?.connection.phase === "connected")
+            : [...presentations.values()].some(
+                (presentation) =>
+                  presentation.connection.phase === "connected" &&
+                  (!selected.account ||
+                    presentation.serverConfig?.usageLimitSources?.some((source) =>
+                      source.accounts.some(
+                        (account) =>
+                          selected.account?.key ===
+                          `${source.id}:${account.id}${account.workspaceId ? `:${account.workspaceId}` : ""}`,
+                      ),
+                    )),
+              );
+        const loading =
+          !selected.account &&
+          [...presentations.values()].some(
+            (presentation) =>
+              presentation.connection.phase === "connected" && presentation.serverConfig === null,
           );
-        })}
+        return (
+          <UsageIndicator
+            key={driver}
+            driver={driver}
+            detailed={preferences.detailed}
+            {...selected}
+            connected={connected}
+            loading={loading}
+            now={now}
+          />
+        );
+      })}
     </div>
   );
 });

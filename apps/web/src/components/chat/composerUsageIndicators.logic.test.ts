@@ -2,6 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { ProviderDriverKind, type ServerProviderUsageWindow } from "@t3tools/contracts";
 import { remainingPercent, type LimitAccount } from "@t3tools/shared/usageLimits";
 import {
+  composerUsageCredits,
+  composerUsageDailyBudget,
+  composerUsagePrimaryWindow,
   composerUsageWindow,
   composerUsageStale,
   selectComposerUsageAccount,
@@ -68,6 +71,26 @@ describe("composer usage indicators", () => {
     const full = account("full", "codex", [window("secondary", "session", 0)]);
     expect(remainingPercent(composerUsageWindow(full, "session")!)).toBe(100);
     expect(composerUsageWindow(undefined, "session")).toBeUndefined();
+    expect(remainingPercent(composerUsagePrimaryWindow(full, "codex")!)).toBe(100);
+    const copilot = account("copilot", "copilot", [window("ai_credits", "monthly", 30)]);
+    expect(remainingPercent(composerUsagePrimaryWindow(copilot, "copilot")!)).toBe(70);
+    expect(composerUsagePrimaryWindow(account("none", "copilot", []), "copilot")).toBeUndefined();
+  });
+
+  it("counts Copilot credits GitHub reports and spreads the rest evenly until the reset", () => {
+    const credits = {
+      ...window("ai_credits", "monthly", 25),
+      resetsAt: "2026-11-09T08:00:00Z",
+      usedCount: 5_000.5,
+      limitCount: 20_000,
+    };
+    expect(composerUsageCredits(credits)).toEqual({ remaining: 14_999, limit: 20_000 });
+    expect(composerUsageDailyBudget(credits, now)).toBe(1_499);
+    expect(composerUsageCredits(window("primary", "session"))).toBeNull();
+    expect(
+      composerUsageDailyBudget({ ...credits, resetsAt: "2026-10-30T07:00:00Z" }, now),
+    ).toBeNull();
+    expect(composerUsageCredits({ ...credits, usedCount: 25_000 })?.remaining).toBe(0);
   });
 
   it("does not substitute Claude model-specific weekly limits for its general allowance", () => {

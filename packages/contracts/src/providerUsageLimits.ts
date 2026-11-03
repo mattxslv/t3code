@@ -17,6 +17,9 @@ export const ServerProviderUsageWindow = Schema.Struct({
   usedPercent: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
   resetsAt: Schema.optional(IsoDateTime),
   windowDurationMins: Schema.optional(NonNegativeInt),
+  /** Unit counts the provider itself reports, for allowances measured in credits (Copilot). */
+  usedCount: Schema.optional(Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))),
+  limitCount: Schema.optional(NonNegativeInt),
 });
 export type ServerProviderUsageWindow = typeof ServerProviderUsageWindow.Type;
 

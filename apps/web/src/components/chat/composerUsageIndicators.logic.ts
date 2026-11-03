@@ -1,7 +1,12 @@
 import type { ServerProviderUsageWindow } from "@t3tools/contracts";
 import type { LimitAccount } from "@t3tools/shared/usageLimits";
 
-export type ComposerUsageDriver = "codex" | "claudeAgent";
+export const COMPOSER_USAGE_DRIVERS = ["codex", "claudeAgent", "copilot"] as const;
+export type ComposerUsageDriver = (typeof COMPOSER_USAGE_DRIVERS)[number];
+
+export function isComposerUsageDriver(driver: string): driver is ComposerUsageDriver {
+  return (COMPOSER_USAGE_DRIVERS as readonly string[]).includes(driver);
+}
 
 export function selectComposerUsageAccount(
   accounts: readonly LimitAccount[],
@@ -19,13 +24,55 @@ export function selectComposerUsageAccount(
 
 export function composerUsageWindow(
   account: LimitAccount | undefined,
-  kind: "session" | "weekly",
+  kind: "session" | "weekly" | "monthly",
 ): ServerProviderUsageWindow | undefined {
   const windows = account?.limits.windows.filter((window) => window.kind === kind) ?? [];
   if (account?.driver === "claudeAgent") {
     return windows.find((window) => window.id === (kind === "session" ? "five_hour" : "seven_day"));
   }
   return windows.length === 1 ? windows[0] : undefined;
+}
+
+/** Copilot reports one monthly AI-credit allowance instead of session and weekly windows. */
+export function composerUsagePrimaryWindow(
+  account: LimitAccount | undefined,
+  driver: ComposerUsageDriver,
+): ServerProviderUsageWindow | undefined {
+  return composerUsageWindow(account, driver === "copilot" ? "monthly" : "session");
+}
+
+/** Credits left as GitHub counts them; null when the provider reports only a percentage. */
+export function composerUsageCredits(
+  window: ServerProviderUsageWindow | undefined,
+): { readonly remaining: number; readonly limit: number } | null {
+  if (window?.usedCount === undefined || window.limitCount === undefined || window.limitCount <= 0)
+    return null;
+  return {
+    remaining: Math.max(0, Math.floor(window.limitCount - window.usedCount)),
+    limit: window.limitCount,
+  };
+}
+
+/** Even daily spend that makes the remaining credits last until the reset. */
+export function composerUsageDailyBudget(
+  window: ServerProviderUsageWindow | undefined,
+  now: number,
+): number | null {
+  const credits = composerUsageCredits(window);
+  const resetAt = window?.resetsAt ? Date.parse(window.resetsAt) : NaN;
+  if (credits === null || !Number.isFinite(resetAt) || resetAt <= now) return null;
+  const daysLeft = Math.max(1, Math.ceil((resetAt - now) / 86_400_000));
+  return Math.floor(credits.remaining / daysLeft);
+}
+
+const compactCredits = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+const fullCredits = new Intl.NumberFormat("en");
+
+export function formatCredits(value: number, compact = false): string {
+  return (compact ? compactCredits : fullCredits).format(value);
 }
 
 export function composerUsageStale(account: LimitAccount, now: number): boolean {

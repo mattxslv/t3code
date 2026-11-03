@@ -118,7 +118,7 @@ describe("copilotModelsFromCatalog", () => {
 });
 
 describe("copilotUsageLimits", () => {
-  it("shows GitHub's reported percentage as a monthly AI-credit window", () => {
+  it("shows GitHub's reported percentage and credit counts as a monthly AI-credit window", () => {
     const limits = copilotUsageLimits(enterpriseAccount.quota, CHECKED_AT);
     expect(limits.windows).toEqual([
       {
@@ -127,12 +127,15 @@ describe("copilotUsageLimits", () => {
         label: "AI credits",
         usedPercent: 25,
         resetsAt: "2026-12-01T00:00:00.000Z",
+        windowDurationMins: 30 * 24 * 60,
+        usedCount: 5_000,
+        limitCount: 20_000,
       },
     ]);
     expect(limits.externalUsage?.url).toBe(COPILOT_USAGE_URL);
   });
 
-  it("drops a reset date that has already passed so a used-up allowance stays exhausted", () => {
+  it("replaces a reset date that has already passed with the next monthly reset so a used-up allowance stays exhausted", () => {
     const limits = copilotUsageLimits(
       {
         ...enterpriseAccount.quota!,
@@ -142,7 +145,7 @@ describe("copilotUsageLimits", () => {
       CHECKED_AT,
     );
     expect(limits.windows[0]?.usedPercent).toBe(100);
-    expect(limits.windows[0]?.resetsAt).toBeUndefined();
+    expect(limits.windows[0]?.resetsAt).toBe("2026-12-01T00:00:00.000Z");
   });
 
   it("links to GitHub instead of inventing a balance when no quota is reported", () => {
