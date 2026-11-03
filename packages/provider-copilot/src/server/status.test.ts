@@ -9,6 +9,7 @@ import * as Schema from "effect/Schema";
 import { CopilotSettings } from "../settings.ts";
 import {
   CopilotAccountProbeError,
+  readLivePremiumQuota,
   readPremiumQuota,
   type CopilotAccountSnapshot,
   type probeCopilotAccount,
@@ -189,6 +190,35 @@ describe("readPremiumQuota", () => {
     });
     expect(readPremiumQuota({ premium_interactions: { usedRequests: 1 } })).toBeUndefined();
     expect(readPremiumQuota(undefined)).toBeUndefined();
+  });
+});
+
+describe("readLivePremiumQuota", () => {
+  const cached = {
+    isUnlimitedEntitlement: false,
+    entitlementRequests: 10_000,
+    usedRequests: 50,
+    remainingPercentage: 99.5,
+    overageAllowedWithExhaustedQuota: true,
+    resetDate: "2026-12-01T00:00:00.000Z",
+  };
+
+  it("overlays current usage on the cached snapshot", () => {
+    expect(
+      readLivePremiumQuota(
+        {
+          quota_snapshots: {
+            premium_interactions: { entitlement: 10_000, credits_used: 93, percent_remaining: 98.9 },
+          },
+        },
+        cached,
+      ),
+    ).toEqual({ ...cached, usedRequests: 93, remainingPercentage: 98.9 });
+  });
+
+  it("returns undefined for malformed bodies", () => {
+    expect(readLivePremiumQuota({ quota_snapshots: {} }, cached)).toBeUndefined();
+    expect(readLivePremiumQuota(null, cached)).toBeUndefined();
   });
 });
 
