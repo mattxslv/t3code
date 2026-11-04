@@ -5,6 +5,7 @@
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
+export PATH="$PWD/node_modules/.bin:$PATH"
 repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 sha=$(git rev-parse HEAD)
 
@@ -30,7 +31,7 @@ version="${major}.${minor}.${build}"
 echo "Building $version from $base at ${sha:0:12}"
 
 if [[ "${1:-}" != "--skip-install" ]]; then
-  npx --yes vp install
+  vp install
 fi
 
 rm -rf release
