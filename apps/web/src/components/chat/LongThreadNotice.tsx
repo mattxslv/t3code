@@ -37,7 +37,7 @@ export function findHandoffText(
 }
 
 export const continuationPromptFor = (handoff: string) =>
-  `This is a fresh thread continuing earlier work. The handoff from the previous thread is below. Verify its claims against the repository (git status, recent commits) before relying on them, then continue with the open items under "What's left". Do not redo work the handoff marks as done.\n\n${handoff}`;
+  `This is a fresh thread continuing earlier work. The handoff from the previous thread is below. If there is a repository here, verify its claims against it (git status, recent commits) before relying on them, then continue with the open items under "What's left". Do not redo work the handoff marks as done.\n\n${handoff}`;
 
 const formatTokens = (tokens: number) => `${Math.round(tokens / 1000)}k`;
 
