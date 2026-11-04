@@ -280,6 +280,7 @@ import {
   countPreparingComposerImages,
   usePreparingComposerImages,
 } from "./preparingComposerImages";
+import { composerAccountFor } from "../../autoRoutingStore";
 import { ComposerControlsBar } from "./ComposerControlsBar";
 import { ComposerUsageIndicators } from "./ComposerUsageIndicators";
 import { useClassicComposerControls } from "./useClassicComposerControls";
@@ -929,6 +930,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     lockedInstanceId:
       activeThread?.runtime?.providerInstanceId ?? activeThreadModelSelection?.instanceId,
   });
+  // Auto names the routed model, so the usage bar follows it too; the draft selection can lag.
+  const routedUsageDriver = providerInstanceEntries.find(
+    (entry) => entry.instanceId === autoRouting.state?.latestDecision?.selection?.instanceId,
+  )?.driverKind;
+  const usageProvider =
+    autoRouting.mode === "auto" &&
+    routedUsageDriver !== undefined &&
+    composerAccountFor(routedUsageDriver) === composerAccountFor(selectedProvider)
+      ? routedUsageDriver
+      : selectedProvider;
   const noProviderAvailable =
     selectedProviderEntry === undefined && multipleModelSelections === null;
   const providerCatalogPending = noProviderAvailable && !providerCatalogKnown;
@@ -3624,7 +3635,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     </div>
                   )}
                   <ComposerUsageIndicators
-                    selectedProvider={selectedProvider}
+                    selectedProvider={usageProvider}
                     turnRunning={phase === "running"}
                   />
                   {classicControls ? composerAttachButton : null}

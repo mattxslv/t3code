@@ -148,6 +148,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   @variant dark {
     --appearance-contrast-target: white;
     --composer-usage-codex: #5b5b5b;
+    --composer-usage-claude: #d97757;
     --composer-usage-copilot: #4493f8;
     --app-scrollbar-thumb: rgb(255 255 255 / 8%);
     --app-scrollbar-thumb-hover: rgb(255 255 255 / 12%);
