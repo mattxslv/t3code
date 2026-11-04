@@ -1133,18 +1133,6 @@ export default function ChatView(props: ChatViewProps) {
     !isServerThread && draftFallback
       ? draftFallback.selection
       : activeProjectSettings.settings.defaultModelSelection;
-  const handleNewThreadInActiveProject = () => {
-    const handoff = findHandoffText(timelineMessages);
-    startNewThreadForProject(activeProjectRef, async (projectRef) => {
-      if (handoff === null) return handleNewThread(projectRef);
-      const result = await handleNewThread(projectRef, {
-        prompt: continuationPromptFor(handoff),
-      });
-      if (result) markDraftForAutoSend(String(result.draftId));
-      return result;
-    });
-  };
-  const handleNewThreadInActiveProjectStable = useStableCallback(handleNewThreadInActiveProject);
   const projectGroupingSettings = selectProjectGroupingSettings(settings);
   const activeDraftLogicalProjectKey =
     !isServerThread && activeProject
@@ -1582,6 +1570,18 @@ export default function ChatView(props: ChatViewProps) {
   const timelineMessages = timelineEntries.flatMap((entry) =>
     entry.kind === "message" ? [entry.message] : [],
   );
+  const handleNewThreadInActiveProject = () => {
+    const handoff = findHandoffText(timelineMessages);
+    startNewThreadForProject(activeProjectRef, async (projectRef) => {
+      if (handoff === null) return handleNewThread(projectRef);
+      const result = await handleNewThread(projectRef, {
+        prompt: continuationPromptFor(handoff),
+      });
+      if (result) markDraftForAutoSend(String(result.draftId));
+      return result;
+    });
+  };
+  const handleNewThreadInActiveProjectStable = useStableCallback(handleNewThreadInActiveProject);
   const timelineEmpty = timelineEntries.length === 0 && !hasStreamedTimelineRows;
   const displayedTimelineKey = activeThreadKey ?? routeThreadKey;
   const displayedThreadRef = parseScopedThreadKey(displayedTimelineKey);
