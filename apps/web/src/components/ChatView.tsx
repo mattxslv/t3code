@@ -28,6 +28,7 @@ import { type TerminalLaunchContext, useChatTerminalActions } from "./chat/useCh
 import { useComposerSend } from "./chat/useComposerSend";
 import { useComposerAutoRouting } from "./chat/useComposerAutoRouting";
 import { useComposerResume } from "./chat/useComposerResume";
+import { NEW_THREAD_CONTINUATION_PROMPT } from "./chat/LongThreadNotice";
 import { useImplementPlanInNewThread } from "./chat/useProposedPlanSend";
 import { ThreadFind, ThreadFindCanvas } from "./chat/ThreadFindProvider";
 import { closeThreadFind, openThreadFind, useThreadFindOpen } from "./chat/threadFindStore";
@@ -1129,7 +1130,9 @@ export default function ChatView(props: ChatViewProps) {
       ? draftFallback.selection
       : activeProjectSettings.settings.defaultModelSelection;
   const handleNewThreadInActiveProject = () => {
-    startNewThreadForProject(activeProjectRef, handleNewThread);
+    startNewThreadForProject(activeProjectRef, (projectRef) =>
+      handleNewThread(projectRef, { prompt: NEW_THREAD_CONTINUATION_PROMPT }),
+    );
   };
   const handleNewThreadInActiveProjectStable = useStableCallback(handleNewThreadInActiveProject);
   const projectGroupingSettings = selectProjectGroupingSettings(settings);

@@ -11,6 +11,9 @@ const LONG_THREAD_TOKENS = 120_000;
 export const HANDOFF_REQUEST =
   "Write a short handoff for a new thread: what we did, what is left, and anything a fresh thread needs to know that is not already in the code or git history.";
 
+export const NEW_THREAD_CONTINUATION_PROMPT =
+  "Continue from the previous thread. This is a fresh thread, so first inspect the current repository, git status, and recent commits. Preserve completed work, identify what remains, and continue the user's task without restarting or undoing work that is already done.";
+
 const formatTokens = (tokens: number) => `${Math.round(tokens / 1000)}k`;
 
 /**
