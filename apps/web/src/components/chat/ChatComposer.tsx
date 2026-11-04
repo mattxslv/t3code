@@ -204,7 +204,12 @@ import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
 import { useAutoRoutingEscalationItem } from "./ComposerAutoRouting";
-import { HANDOFF_REQUEST, useLongThreadNoticeItem } from "./LongThreadNotice";
+import {
+  HANDOFF_REQUEST,
+  hasDraftAutoSend,
+  takeDraftAutoSend,
+  useLongThreadNoticeItem,
+} from "./LongThreadNotice";
 import { useComposerAutoRouting } from "./useComposerAutoRouting";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
@@ -2454,6 +2459,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     if (!insertComposerText(HANDOFF_REQUEST, "end") || hasDraft) return;
     submitComposer();
   }
+  const autoSendDraftKey = routeKind === "server" ? null : String(composerDraftTarget);
+  useEffect(() => {
+    if (autoSendDraftKey === null || !hasDraftAutoSend(autoSendDraftKey)) return;
+    if (promptRef.current.trim().length === 0 || isSendDisabled) return;
+    takeDraftAutoSend(autoSendDraftKey);
+    submitComposer();
+  });
   const longThreadItem = useLongThreadNoticeItem({
     threadKey: routeKind === "server" ? `${environmentId}:${routeThreadRef.threadId}` : null,
     contextWindow: activeContextWindow,
