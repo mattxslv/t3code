@@ -587,6 +587,38 @@ export function AutoRoutingSettingsPanel() {
             <SettingsRow
               serverScoped
               settingKeys={["autoRouting"]}
+              {...searchableSetting("auto-routing-personal-providers")}
+              description="Choose which providers Personal Auto can use for routing, fallback, escalation and AI classification. Work is unchanged."
+              control={
+                <Select
+                  value={routing.personalProviderScope}
+                  onValueChange={(value) => {
+                    if (value === "all" || value === "claude" || value === "codex")
+                      updateRouting({ personalProviderScope: value });
+                  }}
+                >
+                  <SelectTrigger size="sm" aria-label="Personal Auto providers">
+                    <SelectValue>
+                      {routing.personalProviderScope === "claude"
+                        ? "Claude only"
+                        : routing.personalProviderScope === "codex"
+                          ? "Codex only"
+                          : routing.personalProviderScope === "selected"
+                            ? "Previously selected provider"
+                            : "Claude and Codex"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup align="end" alignItemWithTrigger={false}>
+                    <SelectItem value="all">Claude and Codex</SelectItem>
+                    <SelectItem value="claude">Claude only</SelectItem>
+                    <SelectItem value="codex">Codex only</SelectItem>
+                  </SelectPopup>
+                </Select>
+              }
+            />
+            <SettingsRow
+              serverScoped
+              settingKeys={["autoRouting"]}
               {...searchableSetting("auto-routing-default-mode")}
               description="Whether new threads start in Auto or with your manual model. You can switch any thread from the model picker."
               control={

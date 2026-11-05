@@ -30,9 +30,12 @@ export function findHandoffText(
     if (message.role === "user" && message.text.trim() === HANDOFF_REQUEST) requestIndex = index;
   });
   if (requestIndex < 0) return null;
-  const reply = messages
-    .slice(requestIndex + 1)
-    .findLast((message) => message.role === "assistant" && message.text.trim().length > 0);
+  const afterRequest = messages.slice(requestIndex + 1);
+  const nextRequest = afterRequest.findIndex((message) => message.role === "user");
+  const replies = nextRequest < 0 ? afterRequest : afterRequest.slice(0, nextRequest);
+  const reply = replies.findLast(
+    (message) => message.role === "assistant" && message.text.trim().length > 0,
+  );
   return reply === undefined || reply.streaming ? null : reply.text.trim();
 }
 

@@ -218,6 +218,42 @@ describe("AutoRoutingService.resolveDispatch", () => {
     }).pipe(Effect.provide(makeLayer({ fixture: thread })));
   });
 
+  it.effect("keeps AI classification on the selected Personal provider", () => {
+    const thread = fixture({ runs: [] });
+    const classifiedWith: Array<ModelSelection> = [];
+    return Effect.gen(function* () {
+      const routing = yield* AutoRoutingService;
+      const resolved = yield* routing.resolveDispatch(
+        dispatchCommand({
+          text: AMBIGUOUS_REQUEST,
+          modelSelection: selection(CLAUDE, "claude-sonnet-5-5"),
+        }),
+      );
+      expect(resolved.modelSelection?.instanceId).toBe(CLAUDE);
+      expect(classifiedWith).toHaveLength(1);
+      expect(classifiedWith[0]?.instanceId).toBe(CLAUDE);
+    }).pipe(
+      Effect.provide(
+        makeLayer({
+          fixture: thread,
+          settings: {
+            autoRouting: {
+              enabled: true,
+              aiClassification: true,
+              personalProviderScope: "selected",
+            },
+          },
+          providers: [claudeProvider(), codexProvider()],
+          classify: (input) =>
+            Effect.sync(() => {
+              classifiedWith.push(input.modelSelection);
+              return { complexity: "trivial" as const };
+            }),
+        }),
+      ),
+    );
+  });
+
   it.effect("routes a Copilot turn between Copilot models and classifies it on Copilot", () => {
     const thread = fixture({ runs: [] });
     const classifiedWith: Array<ModelSelection> = [];
@@ -235,7 +271,7 @@ describe("AutoRoutingService.resolveDispatch", () => {
         makeLayer({
           fixture: thread,
           settings: {
-            autoRouting: { enabled: true, aiClassification: true },
+            autoRouting: { enabled: true, aiClassification: true, allowMeteredProviders: true },
             providerInstances: {
               [COPILOT]: { driver: ProviderDriverKind.make("copilot"), enabled: true },
             },
@@ -246,6 +282,44 @@ describe("AutoRoutingService.resolveDispatch", () => {
               classifiedWith.push(input.modelSelection);
               return { complexity: "trivial" as const };
             }),
+        }),
+      ),
+    );
+  });
+
+  it.effect(
+    "rejects a restricted Auto turn when its provider has no eligible model, including retries",
+    () => {
+      const thread = fixture();
+      return Effect.gen(function* () {
+        const routing = yield* AutoRoutingService;
+        for (const _attempt of [1, 2]) {
+          const error = yield* Effect.flip(routing.resolveDispatch(dispatchCommand()));
+          expect(error.message).toContain("No eligible model");
+        }
+      }).pipe(
+        Effect.provide(
+          makeLayer({
+            fixture: thread,
+            providers: [claudeProvider()],
+            settings: { autoRouting: { enabled: true, personalProviderScope: "codex" } },
+          }),
+        ),
+      );
+    },
+  );
+
+  it.effect("rejects active work on a different provider after the restriction changes", () => {
+    const thread = fixture({ runs: [run("run-1", "running")] });
+    return Effect.gen(function* () {
+      const routing = yield* AutoRoutingService;
+      const error = yield* Effect.flip(routing.resolveDispatch(dispatchCommand()));
+      expect(error.message).toContain("No eligible model");
+    }).pipe(
+      Effect.provide(
+        makeLayer({
+          fixture: thread,
+          settings: { autoRouting: { enabled: true, personalProviderScope: "codex" } },
         }),
       ),
     );
@@ -339,6 +413,31 @@ describe("AutoRoutingService.resolveDispatch", () => {
 });
 
 describe("AutoRoutingService.resolveLaunch", () => {
+  it.effect("rejects a new restricted Auto thread without an eligible provider", () => {
+    const thread = fixture();
+    return Effect.gen(function* () {
+      const routing = yield* AutoRoutingService;
+      const error = yield* Effect.flip(
+        routing.resolveLaunch({
+          commandId: CommandId.make("restricted-launch"),
+          projectId: PROJECT,
+          modelSelection: SONNET,
+          autoRouting: { mode: "auto" },
+          initialMessage: { text: "hello", attachments: [] },
+        }),
+      );
+      expect(error.message).toContain("No eligible model");
+    }).pipe(
+      Effect.provide(
+        makeLayer({
+          fixture: thread,
+          providers: [claudeProvider()],
+          settings: { autoRouting: { enabled: true, personalProviderScope: "codex" } },
+        }),
+      ),
+    );
+  });
+
   it.effect("routes the first message of a new thread and records it under that thread", () => {
     const thread = fixture();
     return Effect.gen(function* () {

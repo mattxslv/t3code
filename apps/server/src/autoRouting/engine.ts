@@ -230,6 +230,7 @@ export function decideRoute(input: RouteInput): RouteDecision {
     settings,
     nowMs: input.nowMs,
     pool: autoRoutingPoolFor(input.providers, input.requestedSelection),
+    selectedInstanceId: input.requestedSelection?.instanceId ?? null,
     ...(input.instanceEnabledForProject === undefined
       ? {}
       : { instanceEnabledForProject: input.instanceEnabledForProject }),
@@ -495,6 +496,7 @@ export function computeEscalationOffer(input: {
     settings: input.settings,
     nowMs: input.nowMs,
     pool: autoRoutingPoolFor(input.providers, input.runSelection),
+    selectedInstanceId: input.runSelection.instanceId,
     ...(input.instanceEnabledForProject === undefined
       ? {}
       : { instanceEnabledForProject: input.instanceEnabledForProject }),

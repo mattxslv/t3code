@@ -75,11 +75,13 @@ export interface RoutableLaunchInput {
 }
 
 export interface AutoRoutingServiceShape {
-  /** Never fails: any routing error leaves the client's manual selection in place. */
+  /** A restricted Auto pool rejects a turn when no model can be routed. */
   readonly resolveDispatch: (
     command: MessageDispatchCommand,
-  ) => Effect.Effect<MessageDispatchCommand>;
-  readonly resolveLaunch: <Input extends RoutableLaunchInput>(input: Input) => Effect.Effect<Input>;
+  ) => Effect.Effect<MessageDispatchCommand, AutoRoutingError>;
+  readonly resolveLaunch: <Input extends RoutableLaunchInput>(
+    input: Input,
+  ) => Effect.Effect<Input, AutoRoutingError>;
   readonly getThreadState: (
     threadId: ThreadId,
   ) => Effect.Effect<AutoRoutingThreadState, AutoRoutingError>;
@@ -269,6 +271,7 @@ const make = Effect.gen(function* () {
       settings: input.settings,
       nowMs: input.nowMs,
       pool,
+      selectedInstanceId: input.requestedSelection?.instanceId ?? null,
       ...(input.instanceEnabledForProject === undefined
         ? {}
         : { instanceEnabledForProject: input.instanceEnabledForProject }),
@@ -402,7 +405,7 @@ const make = Effect.gen(function* () {
     readonly text: string;
     readonly attachmentCount: number;
     readonly requestedSelection: ModelSelection;
-  }): Effect.fn.Return<ModelSelection, AutoRoutingError> {
+  }): Effect.fn.Return<ModelSelection | null, AutoRoutingError> {
     const replay = yield* store.findByCommandId(input.commandId);
     if (replay !== null) {
       return replay.kind === "routed" || replay.kind === "escalation"
@@ -477,6 +480,20 @@ const make = Effect.gen(function* () {
       requestedSelection: input.requestedSelection,
       allowAi: settings.autoRouting.aiClassification,
     });
+    const scope = settings.autoRouting.personalProviderScope;
+    if ((scope === "claude" || scope === "codex") && !settings.autoRouting.dryRun) {
+      const providers = yield* providerRegistry.getProviders;
+      if (autoRoutingPoolFor(providers, input.requestedSelection) === "personal") {
+        const driver = providers.find(
+          (provider) => provider.instanceId === routed.selection?.instanceId,
+        )?.driver;
+        if (
+          routed.kind === "manual_fallback" ||
+          driver !== (scope === "claude" ? "claudeAgent" : "codex")
+        )
+          return null;
+      }
+    }
     const dryRun = settings.autoRouting.dryRun && routed.kind === "routed";
     const decision = yield* toDecision(routed, {
       ...meta,
@@ -489,19 +506,32 @@ const make = Effect.gen(function* () {
     return decision.selection ?? input.requestedSelection;
   });
 
-  // Defects included: a routing bug must never stop a message from being sent.
   const failSafe =
-    <A>(fallback: A, operation: string) =>
-    <E, R>(effect: Effect.Effect<A, E, R>) =>
+    (fallback: ModelSelection, mode: AutoRoutingRequest["mode"], operation: string) =>
+    <E, R>(effect: Effect.Effect<ModelSelection | null, E, R>) =>
       effect.pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause as Cause.Cause<never>)
-            : Effect.logWarning(
-                `Auto routing ${operation} failed; using the manual selection.`,
-                cause,
-              ).pipe(Effect.as(fallback)),
-        ),
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) return Effect.failCause(cause as Cause.Cause<never>);
+          return Effect.gen(function* () {
+            yield* Effect.logWarning(`Auto routing ${operation} failed.`, cause);
+            const settings = yield* readSettings.pipe(
+              Effect.catchCause(() => Effect.succeed(null)),
+            );
+            if (
+              mode === "auto" &&
+              settings?.autoRouting.enabled &&
+              !settings.autoRouting.dryRun &&
+              (settings.autoRouting.personalProviderScope === "claude" ||
+                settings.autoRouting.personalProviderScope === "codex")
+            ) {
+              const providers = yield* providerRegistry.getProviders.pipe(
+                Effect.catchCause(() => Effect.succeed([])),
+              );
+              if (autoRoutingPoolFor(providers, fallback) === "personal") return null;
+            }
+            return fallback;
+          });
+        }),
       );
 
   const resolveDispatch: AutoRoutingServiceShape["resolveDispatch"] = Effect.fn(
@@ -526,7 +556,12 @@ const make = Effect.gen(function* () {
       text: command.text,
       attachmentCount: command.attachments.length,
       requestedSelection: requested,
-    }).pipe(failSafe(requested, "dispatch"));
+    }).pipe(failSafe(requested, autoRouting.mode, "dispatch"));
+    if (selection === null)
+      return yield* new AutoRoutingError({
+        message:
+          "No eligible model is available from the selected Personal Auto provider. Check Auto routing settings or choose a model manually.",
+      });
     return { ...manual, modelSelection: selection };
   });
 
@@ -553,7 +588,12 @@ const make = Effect.gen(function* () {
       text: input.initialMessage?.text ?? "",
       attachmentCount: input.initialMessage?.attachments.length ?? 0,
       requestedSelection: input.modelSelection,
-    }).pipe(failSafe(input.modelSelection, "launch"));
+    }).pipe(failSafe(input.modelSelection, autoRouting.mode, "launch"));
+    if (selection === null)
+      return yield* new AutoRoutingError({
+        message:
+          "No eligible model is available from the selected Personal Auto provider. Check Auto routing settings or choose a model manually.",
+      });
     return { ...manual, modelSelection: selection } as Input;
   });
 

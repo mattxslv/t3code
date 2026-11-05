@@ -280,14 +280,19 @@ describe.each([
 
   it("sets the prompt before the draft shows", async () => {
     testState.reset(draft);
+    const onPromptSeeded = vi.fn();
     const pendingOpen = useNewThreadHandler()(
       { environmentId: "environment-ssh", projectId: "project-remote" } as never,
-      { prompt: "Read the playbook. " },
+      { prompt: "Read the playbook. ", onPromptSeeded },
     );
 
     testState.completeProjectFileRead(null);
     const opened = await pendingOpen;
 
+    expect(onPromptSeeded).toHaveBeenCalledWith(opened?.draftId);
+    expect(onPromptSeeded.mock.invocationCallOrder[0]).toBeLessThan(
+      testState.router.navigate.mock.invocationCallOrder[0] ?? 0,
+    );
     expect(testState.draftStore.setPrompt).toHaveBeenCalledWith(
       opened?.draftId,
       "Read the playbook. ",
@@ -327,13 +332,15 @@ describe("useNewThreadHandler", () => {
       .mockReturnValueOnce(raced as never);
     testState.giveUserText("draft-raced");
 
+    const onPromptSeeded = vi.fn();
     const opened = await useNewThreadHandler()(
       { environmentId: "environment-ssh", projectId: "project-remote" } as never,
-      { prompt: "Read the playbook. " },
+      { prompt: "Read the playbook. ", onPromptSeeded },
     );
 
     expect(opened?.draftId).toBe("draft-raced");
     expect(testState.draftStore.setPrompt).not.toHaveBeenCalled();
+    expect(onPromptSeeded).not.toHaveBeenCalled();
   });
 
   it("seeds the prompt into the empty draft that is already open", async () => {

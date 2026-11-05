@@ -60,6 +60,7 @@ export function readPremiumQuota(
   if (typeof raw !== "object" || raw === null) return undefined;
   const value = raw as Record<string, unknown>;
   if (
+    value.tokenBasedBilling !== true ||
     typeof value.isUnlimitedEntitlement !== "boolean" ||
     typeof value.entitlementRequests !== "number" ||
     typeof value.usedRequests !== "number" ||
@@ -76,54 +77,6 @@ export function readPremiumQuota(
     resetDate: optionalString(value.resetDate),
   };
 }
-
-/**
- * The runtime serves the quota it cached at sign-in, so usage drifts until restart. GitHub's own
- * endpoint is current; any failure falls back to the runtime snapshot.
- */
-export function readLivePremiumQuota(
-  body: unknown,
-  fallback: CopilotQuotaSnapshot,
-): CopilotQuotaSnapshot | undefined {
-  if (typeof body !== "object" || body === null) return undefined;
-  const snapshots = (body as { quota_snapshots?: unknown }).quota_snapshots;
-  const raw = (snapshots as Record<string, unknown> | undefined)?.[PREMIUM_QUOTA_KEY];
-  if (typeof raw !== "object" || raw === null) return undefined;
-  const value = raw as Record<string, unknown>;
-  const entitlement = value.entitlement;
-  const percentRemaining = value.percent_remaining;
-  if (typeof entitlement !== "number" || typeof percentRemaining !== "number") return undefined;
-  const used =
-    typeof value.credits_used === "number"
-      ? value.credits_used
-      : typeof value.remaining === "number"
-        ? entitlement - value.remaining
-        : undefined;
-  if (used === undefined) return undefined;
-  return {
-    ...fallback,
-    entitlementRequests: entitlement,
-    usedRequests: used,
-    remainingPercentage: percentRemaining,
-  };
-}
-
-const LIVE_QUOTA_TIMEOUT_MS = 5_000;
-
-async function requestLivePremiumQuota(token: string, fallback: CopilotQuotaSnapshot) {
-  // @effect-diagnostics-next-line globalFetch:off - Plain promise helper; wiring HttpClient would widen the probe's requirements for one optional call.
-  const response = await fetch("https://api.github.com/copilot_internal/user", {
-    headers: { authorization: `token ${token}`, "user-agent": "t3code" },
-    signal: AbortSignal.timeout(LIVE_QUOTA_TIMEOUT_MS),
-  });
-  if (!response.ok) return undefined;
-  return readLivePremiumQuota(await response.json(), fallback);
-}
-
-const fetchLivePremiumQuota = (token: string, fallback: CopilotQuotaSnapshot) =>
-  Effect.tryPromise(() => requestLivePremiumQuota(token, fallback)).pipe(
-    Effect.orElseSucceed(() => undefined),
-  );
 
 export const probeCopilotAccount = Effect.fn("probeCopilotAccount")(function* (input: {
   readonly binaryPath: string;
@@ -177,26 +130,6 @@ export const probeCopilotAccount = Effect.fn("probeCopilotAccount")(function* (i
     Effect.map((result) => readPremiumQuota(result.quotaSnapshots)),
     Effect.orElseSucceed(() => undefined),
   );
-  let quota = cachedQuota;
-  if (cachedQuota !== undefined && !cachedQuota.isUnlimitedEntitlement) {
-    const users = yield* call("account.getAllUsers", () => client.rpc.account.getAllUsers()).pipe(
-      Effect.orElseSucceed(() => undefined),
-    );
-    const token = (
-      users as ReadonlyArray<{
-        token?: unknown;
-        authInfo?: { host?: string; login?: string };
-      }> | undefined
-    )?.find(
-      (user) =>
-        user.authInfo?.host === "https://github.com" &&
-        user.authInfo.login === auth.login &&
-        typeof user.token === "string",
-    )?.token;
-    if (typeof token === "string") {
-      quota = (yield* fetchLivePremiumQuota(token, cachedQuota)) ?? cachedQuota;
-    }
-  }
   const models = yield* call("listModels", () => client.listModels());
   return {
     isAuthenticated: true,
@@ -206,6 +139,6 @@ export const probeCopilotAccount = Effect.fn("probeCopilotAccount")(function* (i
     plan: optionalString(copilotUser?.copilot_plan),
     accessSku: optionalString(copilotUser?.access_type_sku),
     models,
-    quota,
+    quota: cachedQuota,
   } satisfies CopilotAccountSnapshot;
 }, Effect.scoped);

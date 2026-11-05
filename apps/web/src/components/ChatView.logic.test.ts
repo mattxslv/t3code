@@ -1,3 +1,5 @@
+import { HANDOFF_REQUEST } from "./chat/LongThreadNotice";
+import { readThreadHandoff } from "./ChatView.logic";
 import {
   boundAttachmentIds,
   buildExpiredTerminalContextToastCopy,
@@ -1195,3 +1197,34 @@ describe("deriveWorkspaceMutationId", () => {
     );
   });
 });
+
+it.each([
+  { streaming: false, laterReply: false, expected: "Done: setup. Left: verify tablet." },
+  { streaming: true, laterReply: false, expected: null },
+  { streaming: false, laterReply: true, expected: "Done: setup. Left: verify tablet." },
+])(
+  "reads the actual handoff from full text (streaming=$streaming, later reply=$laterReply)",
+  ({ streaming, laterReply, expected }) => {
+    const messages = [
+      { item: { type: "user_message", text: HANDOFF_REQUEST } },
+      { item: { type: "assistant_message", text: "Done: setup. Left: verify tablet.", streaming } },
+      ...(laterReply
+        ? [
+            { item: { type: "user_message", text: "Why did the button fail?" } },
+            {
+              item: {
+                type: "assistant_message",
+                text: "An unrelated explanation.",
+                streaming: false,
+              },
+            },
+          ]
+        : []),
+    ] as unknown as ReadonlyArray<OrchestrationV2ProjectedTurnItem>;
+    const atom = Atom.make(messages);
+    using _items = vi
+      .spyOn(environmentThreadDetails, "visibleTurnItemsAtom")
+      .mockReturnValue(atom as never);
+    expect(readThreadHandoff({ environmentId, threadId })).toBe(expected);
+  },
+);

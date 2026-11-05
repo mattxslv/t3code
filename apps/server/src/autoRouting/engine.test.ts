@@ -33,13 +33,41 @@ describe("decideRoute with GitHub Copilot", () => {
   it("keeps a Copilot request on Copilot and picks the model the task needs", () => {
     const providers = [claudeProvider(), codexProvider(), copilotProvider()];
     const requestedSelection = selection(COPILOT, "gpt-5.6-luna");
-    const hard = decideRoute(routeInput({ text: QUALITY_TASK, providers, requestedSelection }));
+    const hard = decideRoute(
+      routeInput({
+        text: QUALITY_TASK,
+        providers,
+        requestedSelection,
+        settingsPatch: { allowMeteredProviders: true },
+      }),
+    );
     expect(hard.selection?.instanceId).toBe(COPILOT);
     expect(hard.selection?.model).toBe("claude-opus-5.5");
-    const trivial = decideRoute(routeInput({ text: "hello", providers, requestedSelection }));
+    const trivial = decideRoute(
+      routeInput({
+        text: "hello",
+        providers,
+        requestedSelection,
+        settingsPatch: { allowMeteredProviders: true },
+      }),
+    );
     expect(trivial.selection?.instanceId).toBe(COPILOT);
     expect(trivial.selection?.model).toBe("gpt-5.6-luna");
     expect(hard.candidates.every((candidate) => candidate.instanceId === COPILOT)).toBe(true);
+  });
+
+  it("requires the metered billing opt-in even for a Work request", () => {
+    const decision = decideRoute(
+      routeInput({
+        providers: [copilotProvider()],
+        requestedSelection: selection(COPILOT, "gpt-5.6-luna"),
+        settingsPatch: { allowMeteredProviders: false },
+      }),
+    );
+    expect(decision.kind).toBe("manual_fallback");
+    expect(
+      decision.candidates.every((candidate) => candidate.excluded === "Uses metered API billing"),
+    ).toBe(true);
   });
 
   it("never routes a Claude or Codex request to Copilot, even with metered providers allowed", () => {
@@ -74,6 +102,7 @@ describe("decideRoute with GitHub Copilot", () => {
     const decision = decideRoute(
       routeInput({
         text: QUALITY_TASK,
+        settingsPatch: { allowMeteredProviders: true },
         providers: [
           claudeProvider(),
           copilotProvider({
@@ -103,6 +132,61 @@ describe("decideRoute with GitHub Copilot", () => {
 });
 
 describe("decideRoute", () => {
+  it.each([CLAUDE, CODEX])("keeps Personal Auto within the selected provider %s", (instanceId) => {
+    const requested = selection(
+      instanceId,
+      instanceId === CLAUDE ? "claude-haiku-5-5" : "gpt-6-luna",
+    );
+    const input = routeInput({
+      requestedSelection: requested,
+      settingsPatch: { personalProviderScope: "selected" },
+    });
+    const decision = decideRoute(input);
+    expect(decision.selection?.instanceId).toBe(instanceId);
+    expect(
+      decision.candidates
+        .filter((candidate) => candidate.instanceId !== instanceId)
+        .every((candidate) => candidate.excluded !== null),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["claude", CLAUDE, CODEX],
+    ["codex", CODEX, CLAUDE],
+  ] as const)(
+    "routes within %s regardless of the requested model provider",
+    (scope, expected, requestedProvider) => {
+      const decision = decideRoute(
+        routeInput({
+          requestedSelection: selection(
+            requestedProvider,
+            requestedProvider === CLAUDE ? "claude-haiku-5-5" : "gpt-6-luna",
+          ),
+          settingsPatch: { personalProviderScope: scope },
+        }),
+      );
+      expect(decision.selection?.instanceId).toBe(expected);
+      expect(
+        decision.candidates
+          .filter((candidate) => candidate.instanceId !== expected)
+          .every((candidate) => candidate.excluded !== null),
+      ).toBe(true);
+    },
+  );
+
+  it("does not fall back to another provider when the selected provider is exhausted", () => {
+    const requested = selection(CODEX, "gpt-6-luna");
+    const decision = decideRoute(
+      routeInput({
+        requestedSelection: requested,
+        settingsPatch: { personalProviderScope: "selected" },
+        providers: [claudeProvider(), codexProvider({ usageLimits: exhausted() })],
+      }),
+    );
+    expect(decision.kind).toBe("manual_fallback");
+    expect(decision.selection).toEqual(requested);
+  });
+
   it.each([
     ["economy", "thanks, looks good", 1],
     ["balanced", "Add a unit test for parseDuration covering negative values", 2],
@@ -534,6 +618,21 @@ describe("computeEscalationOffer", () => {
       evidence: ["`vp test` exited with code 1"],
       to: { instanceId: CLAUDE, model: "claude-opus-5-5" },
     });
+  });
+
+  it("does not escalate to a different Personal provider when the selected one has no stronger model", () => {
+    expect(
+      computeEscalationOffer({
+        ...base,
+        runSelection: selection(CLAUDE, "claude-opus-5-5"),
+        providers: [claudeProvider(), codexProvider()],
+        settings: {
+          ...base.settings,
+          personalProviderScope: "selected",
+          modelTiers: [{ model: "gpt-6.1-sol", tier: 4 }],
+        },
+      }),
+    ).toBeNull();
   });
 
   it("does not offer escalation for environment failures, interruptions or success", () => {

@@ -93,7 +93,13 @@ const withAutoRouting = Effect.fn("ThreadMessageIntake.withAutoRouting")(functio
     const { autoRouting: _autoRouting, ...manual } = command;
     return manual;
   }
-  return yield* routing.value.resolveDispatch(command);
+  return yield* routing.value
+    .resolveDispatch(command)
+    .pipe(
+      Effect.mapError(
+        (cause) => new AttachmentClaims.AttachmentClaimError({ message: cause.message, cause }),
+      ),
+    );
 });
 
 const launchWithAutoRouting = Effect.fn("ThreadMessageIntake.launchWithAutoRouting")(function* (
@@ -105,7 +111,13 @@ const launchWithAutoRouting = Effect.fn("ThreadMessageIntake.launchWithAutoRouti
     const { autoRouting: _autoRouting, ...manual } = input;
     return manual;
   }
-  return yield* routing.value.resolveLaunch(input);
+  return yield* routing.value
+    .resolveLaunch(input)
+    .pipe(
+      Effect.mapError(
+        (cause) => new AttachmentClaims.AttachmentClaimError({ message: cause.message, cause }),
+      ),
+    );
 });
 
 export const dispatchCommand = Effect.fn("ThreadMessageIntake.dispatchCommand")(function* (

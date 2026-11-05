@@ -11,6 +11,7 @@ import {
   ThumbsDownIcon,
   ThumbsUpIcon,
   TrendingUpIcon,
+  UserIcon,
 } from "lucide-react";
 
 import type { ComposerAccount } from "../../autoRoutingStore";
@@ -112,9 +113,14 @@ export function ComposerAccountChip(props: {
           />
         }
       >
-        <span data-composer-control-label>{ACCOUNT_LABELS[account]}</span>
+        <ComposerControlIcon
+          icon={account === "work" ? BriefcaseIcon : UserIcon}
+          size={props.size}
+        />
       </TooltipTrigger>
-      <TooltipPopup side="top">Switch to {ACCOUNT_LABELS[other]}</TooltipPopup>
+      <TooltipPopup side="top">
+        {ACCOUNT_LABELS[account]} · Switch to {ACCOUNT_LABELS[other]}
+      </TooltipPopup>
     </Tooltip>
   );
 }
@@ -278,12 +284,6 @@ export function AutoRoutingAiClassificationChip(props: {
           size={props.size}
           {...(toggle.enabled ? { className: "text-primary" } : {})}
         />
-        <span
-          data-composer-control-label
-          className={toggle.enabled ? "text-foreground" : "text-muted-foreground"}
-        >
-          AI
-        </span>
       </TooltipTrigger>
       <TooltipPopup side="top">
         <div className="grid w-56 gap-1 py-0.5 text-xs">

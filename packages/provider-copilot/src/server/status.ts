@@ -107,9 +107,7 @@ export function copilotModelsFromCatalog(
   return models;
 }
 
-// GitHub resets the AI-credit allowance at 00:00 UTC on the 1st of each month, yet has reported
-// reset dates already in the past. Such a date would make a used-up allowance look reset to Auto,
-// so it falls back to the next documented monthly reset.
+// A stale reset must not make an exhausted quota eligible or imply a guessed billing date.
 function monthlyReset(
   value: string | undefined,
   checkedAt: string,
@@ -117,10 +115,10 @@ function monthlyReset(
   const checked = DateTime.make(checkedAt);
   if (Option.isNone(checked)) return undefined;
   const reported = value === undefined ? Option.none() : DateTime.make(value);
-  const reset =
-    Option.isSome(reported) && DateTime.isGreaterThan(reported.value, checked.value)
-      ? reported.value
-      : DateTime.startOf(DateTime.add(checked.value, { months: 1 }), "month");
+  if (Option.isNone(reported) || !DateTime.isGreaterThan(reported.value, checked.value)) {
+    return undefined;
+  }
+  const reset = reported.value;
   const cycleStart = DateTime.subtract(reset, { months: 1 });
   return {
     resetsAt: DateTime.formatIso(reset),

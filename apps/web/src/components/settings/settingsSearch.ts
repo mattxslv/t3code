@@ -229,6 +229,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["auto model routing router pick claude codex automatic selection opt in"],
   },
   {
+    id: "auto-routing-personal-providers",
+    title: "Personal Auto providers",
+    to: "/settings/auto-routing",
+    searchTerms: ["stay lock selected provider only claude codex personal fallback escalation"],
+  },
+  {
     id: "auto-routing-default-mode",
     title: "New threads start in",
     to: "/settings/auto-routing",

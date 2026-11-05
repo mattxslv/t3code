@@ -1,3 +1,4 @@
+import { findHandoffText } from "./chat/LongThreadNotice";
 import { type OrchestrationV2ProviderTurn, type RunAttemptId } from "@t3tools/contracts";
 import {
   deriveLatestThreadRun,
@@ -404,6 +405,24 @@ export function resolveThreadSwitchTimeline<T extends readonly unknown[]>(input:
   }
 
   return input.nextEntries;
+}
+
+export function readThreadHandoff(threadRef: ScopedThreadRef | null): string | null {
+  if (threadRef === null) return null;
+  const rows = appAtomRegistry.get(environmentThreadDetails.visibleTurnItemsAtom(threadRef));
+  return findHandoffText(
+    rows.flatMap(({ item }) =>
+      item.type === "user_message" || item.type === "assistant_message"
+        ? [
+            {
+              role: item.type === "user_message" ? "user" : "assistant",
+              text: item.text,
+              streaming: item.type === "assistant_message" && item.streaming,
+            },
+          ]
+        : [],
+    ),
+  );
 }
 
 export function startNewThreadForProject(

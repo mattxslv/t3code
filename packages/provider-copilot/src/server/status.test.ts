@@ -6,10 +6,11 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
+import * as HostProcess from "@t3tools/shared/HostProcess";
+
 import { CopilotSettings } from "../settings.ts";
 import {
   CopilotAccountProbeError,
-  readLivePremiumQuota,
   readPremiumQuota,
   type CopilotAccountSnapshot,
   type probeCopilotAccount,
@@ -66,8 +67,14 @@ const fakeCopilotBinary = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const dir = yield* fileSystem.makeTempDirectory({ prefix: "t3-copilot-" });
-  const binary = path.join(dir, "copilot");
-  yield* fileSystem.writeFileString(binary, '#!/bin/sh\necho "GitHub Copilot CLI 1.0.105."\n');
+  const platform = yield* HostProcess.Platform;
+  const binary = path.join(dir, platform === "win32" ? "copilot.cmd" : "copilot");
+  yield* fileSystem.writeFileString(
+    binary,
+    platform === "win32"
+      ? "@echo off\r\necho GitHub Copilot CLI 1.0.105.\r\n"
+      : '#!/bin/sh\necho "GitHub Copilot CLI 1.0.105."\n',
+  );
   yield* fileSystem.chmod(binary, 0o755);
   return binary;
 }).pipe(Effect.orDie);
@@ -136,7 +143,7 @@ describe("copilotUsageLimits", () => {
     expect(limits.externalUsage?.url).toBe(COPILOT_USAGE_URL);
   });
 
-  it("replaces a reset date that has already passed with the next monthly reset so a used-up allowance stays exhausted", () => {
+  it("does not invent a reset date when the reported date has passed", () => {
     const limits = copilotUsageLimits(
       {
         ...enterpriseAccount.quota!,
@@ -146,7 +153,7 @@ describe("copilotUsageLimits", () => {
       CHECKED_AT,
     );
     expect(limits.windows[0]?.usedPercent).toBe(100);
-    expect(limits.windows[0]?.resetsAt).toBe("2026-12-01T00:00:00.000Z");
+    expect(limits.windows[0]?.resetsAt).toBeUndefined();
   });
 
   it("links to GitHub instead of inventing a balance when no quota is reported", () => {
@@ -173,6 +180,7 @@ describe("readPremiumQuota", () => {
         chat: { isUnlimitedEntitlement: true },
         premium_interactions: {
           isUnlimitedEntitlement: false,
+          tokenBasedBilling: true,
           entitlementRequests: 20_000,
           usedRequests: 0,
           remainingPercentage: 100,
@@ -190,35 +198,14 @@ describe("readPremiumQuota", () => {
     });
     expect(readPremiumQuota({ premium_interactions: { usedRequests: 1 } })).toBeUndefined();
     expect(readPremiumQuota(undefined)).toBeUndefined();
-  });
-});
-
-describe("readLivePremiumQuota", () => {
-  const cached = {
-    isUnlimitedEntitlement: false,
-    entitlementRequests: 10_000,
-    usedRequests: 50,
-    remainingPercentage: 99.5,
-    overageAllowedWithExhaustedQuota: true,
-    resetDate: "2026-12-01T00:00:00.000Z",
-  };
-
-  it("overlays current usage on the cached snapshot", () => {
     expect(
-      readLivePremiumQuota(
-        {
-          quota_snapshots: {
-            premium_interactions: { entitlement: 10_000, credits_used: 93, percent_remaining: 98.9 },
-          },
+      readPremiumQuota({
+        premium_interactions: {
+          ...enterpriseAccount.quota!,
+          tokenBasedBilling: false,
         },
-        cached,
-      ),
-    ).toEqual({ ...cached, usedRequests: 93, remainingPercentage: 98.9 });
-  });
-
-  it("returns undefined for malformed bodies", () => {
-    expect(readLivePremiumQuota({ quota_snapshots: {} }, cached)).toBeUndefined();
-    expect(readLivePremiumQuota(null, cached)).toBeUndefined();
+      }),
+    ).toBeUndefined();
   });
 });
 

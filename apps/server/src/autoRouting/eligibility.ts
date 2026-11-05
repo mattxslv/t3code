@@ -29,6 +29,7 @@ const METERED_AUTH_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 export type AutoRoutingExclusion =
+  | "personal_provider"
   | "hidden"
   | "provider_disabled"
   | "provider_not_installed"
@@ -44,6 +45,7 @@ export type AutoRoutingExclusion =
   | "project_disabled";
 
 export const AUTO_ROUTING_EXCLUSION_LABELS: Record<AutoRoutingExclusion, string> = {
+  personal_provider: "Outside selected Personal provider",
   hidden: "Hidden from Auto",
   provider_disabled: "Provider disabled",
   provider_not_installed: "Provider not installed",
@@ -109,15 +111,13 @@ function normalizedAuthType(provider: ServerProvider): string | null {
 function providerExclusion(
   provider: ServerProvider,
   settings: AutoRoutingSettings,
-  pool: AutoRoutingPool | null,
 ): AutoRoutingExclusion | null {
   if (!provider.enabled) return "provider_disabled";
   if (!provider.installed) return "provider_not_installed";
   if (provider.auth.status === "unauthenticated") return "provider_unauthenticated";
   if (!isProviderAvailable(provider)) return "provider_unavailable";
   if (provider.status === "error" || provider.status === "disabled") return "provider_error";
-  // Choosing Work is itself the opt-in to spending Copilot's AI credits.
-  if (!settings.allowMeteredProviders && pool !== "work") {
+  if (!settings.allowMeteredProviders) {
     const authType = normalizedAuthType(provider);
     if (authType !== null && METERED_AUTH_TYPES.has(authType)) return "metered_auth";
     // Unknown auth could be cloud billing; only a reported plan is trusted unless the user opts in.
@@ -152,16 +152,27 @@ export function listAutoRoutingModels(input: {
   readonly nowMs: number;
   readonly instanceEnabledForProject?: (instanceId: ProviderInstanceId) => boolean;
   readonly pool?: AutoRoutingPool | null;
+  readonly selectedInstanceId?: ProviderInstanceId | null;
 }): ReadonlyArray<AutoRoutingModelEntry> {
   const pool = input.pool ?? null;
   const entries: AutoRoutingModelEntry[] = [];
   for (const provider of input.providers) {
     if (!AUTO_ROUTING_DRIVERS.has(provider.driver)) continue;
     if (pool !== null && (provider.driver === "copilot") !== (pool === "work")) continue;
-    const providerReason =
-      input.instanceEnabledForProject?.(provider.instanceId) === false
+    const outsideSelectedProvider =
+      pool === "personal" &&
+      ((input.settings.personalProviderScope === "selected" &&
+        input.selectedInstanceId != null &&
+        provider.instanceId !== input.selectedInstanceId) ||
+        ((input.settings.personalProviderScope === "claude" ||
+          input.settings.personalProviderScope === "codex") &&
+          provider.driver !==
+            (input.settings.personalProviderScope === "claude" ? "claudeAgent" : "codex")));
+    const providerReason = outsideSelectedProvider
+      ? "personal_provider"
+      : input.instanceEnabledForProject?.(provider.instanceId) === false
         ? "project_disabled"
-        : providerExclusion(provider, input.settings, pool);
+        : providerExclusion(provider, input.settings);
     const maxUsedPercent = maxMeasuredUsage(provider);
     for (const model of provider.models) {
       const profile = resolveModelProfile(model, input.settings.modelTiers);

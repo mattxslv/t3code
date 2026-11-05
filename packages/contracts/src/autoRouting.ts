@@ -66,6 +66,11 @@ export const AutoRoutingSettings = Schema.Struct({
   enabled: withDefault(Schema.Boolean, false),
   /** Mode new threads start in once Auto is enabled. */
   defaultMode: withDefault(AutoRoutingMode, "manual"),
+  /** Providers available to Personal Auto. */
+  personalProviderScope: withDefault(
+    Schema.Literals(["all", "selected", "claude", "codex"]),
+    "all",
+  ),
   /** Models Auto never selects, including for fallback and escalation. They stay manually selectable. */
   hiddenModels: withDefault(Schema.Array(AutoRoutingModelRef), AUTO_ROUTING_DEFAULT_HIDDEN_MODELS),
   escalation: withDefault(
